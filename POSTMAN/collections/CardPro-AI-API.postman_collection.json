@@ -1,0 +1,103 @@
+{
+  "info": {
+    "name": "CardPro AI API",
+    "description": "Complete API collection for CardPro AI platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"email\": \"user@example.com\", \"password\": \"password123\"}"},
+            "url": {"raw": "{{base_url}}/api/v1/auth/register", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "register"]}
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"email\": \"user@example.com\", \"password\": \"password123\"}"},
+            "url": {"raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api", "v1", "auth", "login"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Card Profiles",
+      "item": [
+        {
+          "name": "Get Public Card",
+          "request": {
+            "method": "GET",
+            "url": {"raw": "{{base_url}}/api/v1/cards/{{slug}}", "host": ["{{base_url}}"], "path": ["api", "v1", "cards", "{{slug}}"]}
+          }
+        },
+        {
+          "name": "Get My Card",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}],
+            "url": {"raw": "{{base_url}}/api/v1/cards/me", "host": ["{{base_url}}"], "path": ["api", "v1", "cards", "me"]}
+          }
+        },
+        {
+          "name": "Create Card",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"slug\": \"johndoe\", \"templateId\": \"basic\", \"profileData\": \"{}\"}"},
+            "url": {"raw": "{{base_url}}/api/v1/cards", "host": ["{{base_url}}"], "path": ["api", "v1", "cards"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Leads",
+      "item": [
+        {
+          "name": "Submit Lead",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"profileId\": \"{{profile_id}}\", \"visitorName\": \"John Visitor\", \"visitorPhone\": \"+919876543210\"}"},
+            "url": {"raw": "{{base_url}}/api/v1/leads", "host": ["{{base_url}}"], "path": ["api", "v1", "leads"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI",
+      "item": [
+        {
+          "name": "Generate Bio",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"rawNotes\": \"Doctor with 15 years experience in cardiology\"}"},
+            "url": {"raw": "{{base_url}}/api/v1/ai/generate-bio", "host": ["{{base_url}}"], "path": ["api", "v1", "ai", "generate-bio"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}, {"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\"itemType\": \"TEMPLATE\"}"},
+            "url": {"raw": "{{base_url}}/api/v1/payments/create-order", "host": ["{{base_url}}"], "path": ["api", "v1", "payments", "create-order"]}
+          }
+        }
+      ]
+    }
+  ]
+}

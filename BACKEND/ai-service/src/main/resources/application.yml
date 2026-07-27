@@ -1,0 +1,58 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: ai-service
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@discovery-service:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+  internal:
+    api-key: ${INTERNAL_API_KEY}
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      model: ${OPENAI_MODEL:gpt-4}
+      bio-generation:
+        max-tokens: 500
+        temperature: 0.7
+        timeout-seconds: 30
+      lead-followup:
+        max-tokens: 300
+        temperature: 0.5
+    vision:
+      removebg:
+        api-key: ${REMOVEBG_API_KEY}
+        timeout-seconds: 30
+      replicate:
+        api-key: ${REPLICATE_API_KEY}
+        model: nightmareai/real-esrgan:42fed1c5
+        timeout-seconds: 60
+    fallback:
+      bio: "Professional with expertise in delivering quality service and building lasting relationships."
+      lead-followup: "Hi {visitor_name}! Thank you for your interest. I would love to connect and discuss how I can help."
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always

@@ -1,0 +1,22 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [ develop ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build all services
+        run: |
+          for service in discovery-service gateway-service auth-service card-service lead-service ai-service payment-service; do
+            cd BACKEND/$service && mvn clean package -DskipTests && cd ../..
+          done
+      - name: Build and push Docker images
+        run: |
+          docker compose -f docker-compose.yml build
+      - name: Deploy to staging
+        run: |
+          echo "Deploying to staging environment..."
