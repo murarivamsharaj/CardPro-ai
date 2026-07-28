@@ -27,14 +27,14 @@ public class CardService {
         }
 
         CardProfile profile = cardProfileRepository.findBySlug(slug)
-            .orElseThrow(() -> new RuntimeException("Card profile not found"));
+                .orElseThrow(() -> new RuntimeException("Card profile not found"));
 
         PublicCardResponse response = PublicCardResponse.builder()
-            .slug(profile.getSlug())
-            .templateId(profile.getTemplateId())
-            .profileData(profile.getProfileData())
-            .aiAvatarUrl(profile.getAiAvatarUrl())
-            .build();
+                .slug(profile.getSlug())
+                .templateId(profile.getTemplateId())
+                .profileData(profile.getProfileData())
+                .aiAvatarUrl(profile.getAiAvatarUrl())
+                .build();
 
         cardCacheService.cacheProfile(slug, response);
         return response;
@@ -42,13 +42,13 @@ public class CardService {
 
     public CardResponse getCardByUserId(String userId) {
         CardProfile profile = cardProfileRepository.findByUserId(UUID.fromString(userId))
-            .orElseThrow(() -> new RuntimeException("Card profile not found"));
+                .orElseThrow(() -> new RuntimeException("Card profile not found"));
         return mapToResponse(profile);
     }
 
     public CardResponse getCardById(UUID profileId) {
         CardProfile profile = cardProfileRepository.findById(profileId)
-            .orElseThrow(() -> new RuntimeException("Card profile not found"));
+                .orElseThrow(() -> new RuntimeException("Card profile not found"));
         return mapToResponse(profile);
     }
 
@@ -56,11 +56,11 @@ public class CardService {
         slugService.validateSlug(request.getSlug());
 
         CardProfile profile = CardProfile.builder()
-            .userId(UUID.fromString(userId))
-            .slug(request.getSlug())
-            .templateId(request.getTemplateId() != null ? request.getTemplateId() : "basic")
-            .profileData(request.getProfileData())
-            .build();
+                .userId(UUID.fromString(userId))
+                .slug(request.getSlug())
+                .templateId(request.getTemplateId() != null ? request.getTemplateId() : "basic")
+                .profileData(request.getProfileData())
+                .build();
 
         profile = cardProfileRepository.save(profile);
         return mapToResponse(profile);
@@ -68,7 +68,7 @@ public class CardService {
 
     public CardResponse updateCard(String userId, UpdateCardRequest request) {
         CardProfile profile = cardProfileRepository.findByUserId(UUID.fromString(userId))
-            .orElseThrow(() -> new RuntimeException("Card profile not found"));
+                .orElseThrow(() -> new RuntimeException("Card profile not found"));
 
         if (request.getSlug() != null) {
             slugService.validateSlug(request.getSlug());
@@ -83,4 +83,36 @@ public class CardService {
         return mapToResponse(profile);
     }
 
-    public voi
+    public void deleteCard(String userId) {
+        CardProfile profile = cardProfileRepository.findByUserId(UUID.fromString(userId))
+                .orElseThrow(() -> new RuntimeException("Card profile not found"));
+
+        cardProfileRepository.delete(profile);
+        cardCacheService.evictCache(profile.getSlug());
+    }
+
+    // --- NEW METHOD ADDED HERE TO FIX THE COMPILATION ERROR ---
+    public void incrementViewCount(UUID profileId) {
+        CardProfile profile = cardProfileRepository.findById(profileId)
+                .orElseThrow(() -> new RuntimeException("Card profile not found"));
+
+        // Assuming your CardProfile entity now has a viewCount field
+        profile.setViewCount(profile.getViewCount() + 1);
+        cardProfileRepository.save(profile);
+
+        // Evict the cache so the updated view count shows on the next request
+        cardCacheService.evictCache(profile.getSlug());
+    }
+
+    private CardResponse mapToResponse(CardProfile profile) {
+        return CardResponse.builder()
+                .id(profile.getId())
+                .userId(profile.getUserId())
+                .slug(profile.getSlug())
+                .templateId(profile.getTemplateId())
+                .profileData(profile.getProfileData())
+                .aiAvatarUrl(profile.getAiAvatarUrl())
+                .isActive(profile.getIsActive())
+                .build();
+    }
+}

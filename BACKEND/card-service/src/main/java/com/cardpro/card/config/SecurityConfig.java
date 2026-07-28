@@ -23,16 +23,25 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/v1/cards/{slug}").permitAll()
-                .requestMatchers("/api/v1/cards/internal/**").hasHeader("X-Internal-API-Key")
-                .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
-                .anyRequest().authenticated()
-            )
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(internalApiKeyFilter, JwtAuthenticationFilter.class);
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // Public route
+                        .requestMatchers("/api/v1/cards/{slug}").permitAll()
+
+                        // Internal route: Permitted through the authorization manager because
+                        // the InternalApiKeyFilter will intercept and secure it.
+                        .requestMatchers("/api/v1/cards/internal/**").permitAll()
+
+                        // Admin route
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
+
+                        // All other routes require authentication
+                        .anyRequest().authenticated()
+                )
+                // Add your custom filters
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(internalApiKeyFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }

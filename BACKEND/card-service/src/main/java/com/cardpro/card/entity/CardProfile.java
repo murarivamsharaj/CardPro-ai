@@ -1,9 +1,9 @@
 package com.cardpro.card.entity;
 
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -30,12 +30,18 @@ public class CardProfile {
     @Builder.Default
     private String templateId = "basic";
 
-    @Type(JsonBinaryType.class)
+    // Replaced the legacy @Type with Hibernate 6's native JSON mapping
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "profile_data", columnDefinition = "jsonb", nullable = false)
     private String profileData;
 
     @Column(name = "ai_avatar_url", length = 500)
     private String aiAvatarUrl;
+
+    // Added to fix the incrementViewCount() error in your InternalCardController
+    @Column(name = "view_count", nullable = false)
+    @Builder.Default
+    private Long viewCount = 0L;
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default

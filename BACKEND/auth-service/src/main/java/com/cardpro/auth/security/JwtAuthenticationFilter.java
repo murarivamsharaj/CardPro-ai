@@ -1,51 +1,80 @@
 package com.cardpro.auth.security;
 
-import com.cardpro.auth.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.lang.NonNull;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
 
+/**
+ * Extracts a JWT from the {@code Authorization: Bearer <token>} header,
+ * creates an unauthenticated {@link UsernamePasswordAuthenticationToken},
+ * and delegates authentication to the {@link AuthenticationManager}.
+ *
+ * <p>The actual JWT validation is performed by {@link JwtAuthenticationProvider},
+ * which is registered with the AuthenticationManager in {@code SecurityConfig}.
+ *
+ * <p>Designed to work with Spring Security 6's provider-based architecture.
+ */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain) throws ServletException, IOException {
-        final String authHeader = request.getHeader("Authorization");
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        String token = extractToken(request);
+
+        if (token == null) {
             filterChain.doFilter(request, response);
             return;
         }
 
         try {
-            String token = authHeader.substring(7);
-            String userId = jwtService.extractUserId(token);
+            // Create an unauthenticated token with the JWT as credentials
+            UsernamePasswordAuthenticationToken authRequest =
+                new UsernamePasswordAuthenticationToken(null, token);
 
-            if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UsernamePasswordAuthenticationToken authToken =
-                    new UsernamePasswordAuthenticationToken(userId, null, Collections.emptyList());
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
-        } catch (Exception e) {
-            // Token invalid, continue without auth
+            // Delegate to AuthenticationManager → JwtAuthenticationProvider
+            Authentication authentication = authenticationManager.authenticate(authRequest);
+
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            log.debug("JWT authentication successful for user: {}",
+                ((UserPrincipal) authentication.getPrincipal()).getEmail());
+        } catch (AuthenticationException e) {
+            log.debug("JWT authentication failed: {}", e.getMessage());
+            SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Extracts the Bearer token from the Authorization header.
+     */
+    private String extractToken(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+        return null;
     }
 }
