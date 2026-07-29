@@ -21,6 +21,14 @@ jobs:
         with:
           languages: java, typescript
 
+      # Add JDK 21 setup so Maven can compile your microservices
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
       - name: Build Java Backend for CodeQL
         run: |
           cd BACKEND
