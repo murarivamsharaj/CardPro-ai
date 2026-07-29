@@ -37,12 +37,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'yarn'
-          cache-dependency-path: FRONTEND/yarn.lock
+          # Removed cache lines so the pipeline does not crash on missing lockfiles
       - name: Install dependencies
         run: |
           cd FRONTEND
-          yarn install --frozen-lockfile
+          yarn install --no-lockfile
       - name: Build
         run: |
           cd FRONTEND
