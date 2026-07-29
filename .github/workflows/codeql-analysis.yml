@@ -16,7 +16,14 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
+
       - uses: github/codeql-action/init@v3
         with:
           languages: java, typescript
+
+      - name: Build Java Backend for CodeQL
+        run: |
+          cd BACKEND
+          mvn clean compile -DskipTests
+
       - uses: github/codeql-action/analyze@v3
