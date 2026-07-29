@@ -37,17 +37,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: FRONTEND/package-lock.json
+          # Removed cache lines so the pipeline does not crash on missing lockfiles
       - name: Install dependencies
         run: |
           cd FRONTEND
-          npm ci
+          yarn install --no-lockfile
       - name: Build
         run: |
           cd FRONTEND
-          npm run build
+          yarn build
       - name: Lint
         run: |
           cd FRONTEND
-          npm run lint
+          yarn lint

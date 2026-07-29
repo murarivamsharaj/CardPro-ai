@@ -25,7 +25,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/v1/payments/webhook").permitAll()
-                .requestMatchers("/api/v1/payments/internal/**").hasHeader("X-Internal-API-Key")
+                    .requestMatchers("/api/v1/payments/internal/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterAfter(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class);

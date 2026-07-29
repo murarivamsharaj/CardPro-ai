@@ -1,0 +1,610 @@
+{
+  "info": {
+    "name": "CardPro AI — Auth Service",
+    "description": "Complete Postman collection for the CardPro AI auth-service.\n\n## 🔐 Authentication Flow\n\n1. **Register** a new user or **Login** with existing credentials\n2. The `token` variable is automatically set via Postman test scripts\n3. Use **Refresh Token** when the access token expires\n4. Use **Logout** to invalidate the session\n\n## 📋 Prerequisites\n\nSet the following environment variables:\n\n| Variable | Description | Default |\n|---|---|---|\n| `base_url` | API Gateway URL | `http://localhost:8765` |\n| `token` | JWT access token (auto-set) | (empty) |\n| `refresh_token` | JWT refresh token (auto-set) | (empty) |\n| `user_id` | Logged-in user ID (auto-set) | (empty) |\n\n## 🔗 Related Collections\n\n- [Card Profiles API](./CardPro-AI-API.postman_collection.json)\n\n---\n\n*Generated for CardPro AI v1.0.0*",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "\uD83D\uDD10 Authentication",
+      "description": "Authentication endpoints \u2014 all public (no JWT required).\n\n| Endpoint | Method | Description |\n|---|---|---|\n| `/auth/register` | POST | Create a new account |\n| `/auth/login` | POST | Sign in \u2192 get JWT tokens |\n| `/auth/refresh` | POST | Rotate expired access token |\n| `/auth/logout` | POST | Invalidate session |",
+      "item": [
+        {
+          "name": "\uD83D\uDCDD Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "description": "Create a new user account.\n\n**Validation Rules:**\n- `email` \u2014 must be a valid email format\n- `password` \u2014 must be 8\u2013100 characters\n\n**Rate Limit:** 5 requests/minute/IP"
+          },
+          "response": [
+            {
+              "name": "201 Created \u2014 Registration Successful",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"success\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"tokenType\": \"Bearer\",\n    \"expiresIn\": 86400000,\n    \"user\": {\n      \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n      \"email\": \"newuser@example.com\",\n      \"role\": \"USER\",\n      \"leadCredits\": 25\n    }\n  },\n  \"message\": \"Registration successful\",\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/auth/register",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "auth", "register"]
+                }
+              }
+            },
+            {
+              "name": "409 Conflict \u2014 Email Already Exists",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"EMAIL_ALREADY_EXISTS\",\n    \"message\": \"Email already registered\",\n    \"details\": { \"field\": \"email\" }\n  },\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}"
+            },
+            {
+              "name": "400 Bad Request \u2014 Validation Error",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"VALIDATION_ERROR\",\n    \"message\": \"Request validation failed\",\n    \"details\": {\n      \"email\": \"Invalid email format\",\n      \"password\": \"Password must be between 8 and 100 characters\"\n    }\n  },\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Auto-set token and user info from registration response",
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.data) {",
+                  "        pm.environment.set('token', jsonData.data.token);",
+                  "        pm.environment.set('refresh_token', jsonData.data.refreshToken);",
+                  "        pm.environment.set('user_id', jsonData.data.user.id);",
+                  "        console.log('Registration successful. Token auto-set.');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "\uD83D\uDD11 Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Authenticate with email and password.\n\nReturns JWT access token + refresh token. Access token expires in 24 hours (configurable).\n\n**Rate Limit:** 10 requests/minute/IP"
+          },
+          "response": [
+            {
+              "name": "200 OK \u2014 Login Successful",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"success\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"tokenType\": \"Bearer\",\n    \"expiresIn\": 86400000,\n    \"user\": {\n      \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n      \"email\": \"user@example.com\",\n      \"role\": \"USER\",\n      \"leadCredits\": 25\n    }\n  },\n  \"message\": \"Login successful\",\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/auth/login",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "auth", "login"]
+                }
+              }
+            },
+            {
+              "name": "401 Unauthorized \u2014 Invalid Credentials",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"INVALID_CREDENTIALS\",\n    \"message\": \"Invalid email or password\"\n  },\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Auto-set token and user info from login response",
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.data) {",
+                  "        pm.environment.set('token', jsonData.data.token);",
+                  "        pm.environment.set('refresh_token', jsonData.data.refreshToken);",
+                  "        pm.environment.set('user_id', jsonData.data.user.id);",
+                  "        console.log('Login successful. Token auto-set.');",
+                  "    }",
+                  "} else {",
+                  "    console.error('Login failed:', pm.response.text());",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "\uD83D\uDD04 Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "description": "Issue a new access token using a valid refresh token.\n\n**Token Rotation:** The old refresh token is revoked and a new one is issued. If a revoked token is reused, ALL tokens for that user are invalidated (theft protection)."
+          },
+          "response": [
+            {
+              "name": "200 OK \u2014 Tokens Rotated",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"success\",\n  \"data\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"refreshToken\": \"eyJhbGciOiJIUzI1NiJ9...\",\n    \"tokenType\": \"Bearer\",\n    \"expiresIn\": 86400000,\n    \"user\": {\n      \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n      \"email\": \"user@example.com\",\n      \"role\": \"USER\",\n      \"leadCredits\": 25\n    }\n  },\n  \"message\": \"Token refreshed successfully\",\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/auth/refresh",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "auth", "refresh"]
+                }
+              }
+            },
+            {
+              "name": "401 Unauthorized \u2014 Token Expired / Revoked",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"REFRESH_TOKEN_EXPIRED\",\n    \"message\": \"Refresh token has expired. Please login again.\"\n  },\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Update tokens after refresh",
+                  "if (pm.response.code === 200) {",
+                  "    const jsonData = pm.response.json();",
+                  "    if (jsonData.data) {",
+                  "        pm.environment.set('token', jsonData.data.token);",
+                  "        pm.environment.set('refresh_token', jsonData.data.refreshToken);",
+                  "        console.log('Tokens refreshed successfully.');",
+                  "    }",
+                  "} else {",
+                  "    console.error('Refresh failed:', pm.response.text());",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "\uD83D\uDEAA Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "description": "Invalidate all active sessions.\n\n**What happens:**\n1. All refresh tokens for this user are revoked in the database\n2. The current access token is blacklisted in Redis\n3. Both tokens become immediately unusable\n\n**Note:** Logout requires a valid JWT in the `Authorization` header. Run **Login** first to set the token."
+          },
+          "response": [
+            {
+              "name": "204 No Content \u2014 Logout Successful",
+              "status": "No Content",
+              "code": 204,
+              "header": [],
+              "body": "",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/auth/logout",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "auth", "logout"]
+                }
+              }
+            },
+            {
+              "name": "401 Unauthorized \u2014 Missing / Invalid Token",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"UNAUTHORIZED\",\n    \"message\": \"Authentication is required to access this resource\"\n  },\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Clear token variables on successful logout",
+                  "if (pm.response.code === 204) {",
+                  "    pm.environment.set('token', '');",
+                  "    pm.environment.set('refresh_token', '');",
+                  "    pm.environment.set('user_id', '');",
+                  "    console.log('Logout successful. Tokens cleared.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "\uD83D\uDC64 User APIs",
+      "description": "User profile management endpoints \u2014 requires JWT authentication.\n\nThese endpoints are proxied through the API Gateway to the card-service.",
+      "item": [
+        {
+          "name": "\uD83D\uDCC4 Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cards/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cards", "me"]
+            },
+            "description": "Retrieve the authenticated user's card profile.\n\n**Headers:**\n- `Authorization: Bearer {{token}}` \u2014 JWT access token\n\nThe X-User-Id header is injected automatically by the API Gateway after JWT validation."
+          },
+          "response": [
+            {
+              "name": "200 OK \u2014 Profile Found",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"success\",\n  \"data\": {\n    \"id\": \"b2c3d4e5-f6a7-8901-bcde-f12345678901\",\n    \"userId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"slug\": \"johndoe\",\n    \"templateId\": \"basic\",\n    \"profileData\": \"{\\\"name\\\":\\\"John Doe\\\",\\\"bio\\\":\\\"Software Engineer\\\",\\\"phone\\\":\\\"+919876543210\\\",\\\"email\\\":\\\"john@example.com\\\",\\\"skills\\\":[\\\"React\\\",\\\"Java\\\",\\\"Spring Boot\\\"],\\\"linkedin\\\":\\\"https://linkedin.com/in/johndoe\\\",\\\"github\\\":\\\"https://github.com/johndoe\\\",\\\"youtube\\\":\\\"https://youtube.com/@johndoe\\\",\\\"services\\\":[{\\\"name\\\":\\\"Web Development\\\",\\\"description\\\":\\\"Full-stack web apps\\\",\\\"price\\\":\\\"\\u20b910,000\\\"}],\\\"testimonials\\\":[{\\\"name\\\":\\\"Jane S.\\\",\\\"text\\\":\\\"Great work!\\\",\\\"rating\\\":5}],\\\"theme\\\":{\\\"primary_color\\\":\\\"#1E40AF\\\",\\\"secondary_color\\\":\\\"#DBEAFE\\\",\\\"font_family\\\":\\\"Inter\\\"}}\",\n    \"aiAvatarUrl\": null,\n    \"isActive\": true\n  },\n  \"message\": \"Profile retrieved successfully\",\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cards/me",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "cards", "me"]
+                }
+              }
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"UNAUTHORIZED\",\n    \"message\": \"Authentication is required to access this resource\"\n  },\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}"
+            },
+            {
+              "name": "404 Not Found \u2014 No Profile",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"PROFILE_NOT_FOUND\",\n    \"message\": \"No card profile found for the authenticated user\"\n  },\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "\u270F\uFE0F Update My Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"slug\": \"johndoe\",\n  \"templateId\": \"basic\",\n  \"profileData\": \"{\\\"name\\\":\\\"John Doe\\\",\\\"bio\\\":\\\"Senior Software Engineer & Tech Lead\\\",\\\"phone\\\":\\\"+919876543210\\\",\\\"email\\\":\\\"john@example.com\\\",\\\"skills\\\":[\\\"React\\\",\\\"Java\\\",\\\"Spring Boot\\\",\\\"TypeScript\\\",\\\"PostgreSQL\\\"],\\\"linkedin\\\":\\\"https://linkedin.com/in/johndoe\\\",\\\"github\\\":\\\"https://github.com/johndoe\\\",\\\"youtube\\\":\\\"https://youtube.com/@johndoe\\\",\\\"services\\\":[{\\\"name\\\":\\\"Web Development\\\",\\\"description\\\":\\\"Full-stack web applications with React + Spring Boot\\\",\\\"price\\\":\\\"\\u20b915,000\\\"}],\\\"testimonials\\\":[{\\\"name\\\":\\\"Jane S.\\\",\\\"text\\\":\\\"Excellent work! Highly recommend.\\\",\\\"rating\\\":5}],\\\"theme\\\":{\\\"primary_color\\\":\\\"#1E40AF\\\",\\\"secondary_color\\\":\\\"#DBEAFE\\\",\\\"font_family\\\":\\\"Inter\\\"}}\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/cards/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cards", "me"]
+            },
+            "description": "Update the authenticated user's card profile.\n\n**Partial Updates:** All fields are optional. Only provided fields will be updated.\n\n**Profile Data JSONB Schema:**\n```json\n{\n  \"name\": \"string\",\n  \"bio\": \"string\",\n  \"phone\": \"string\",\n  \"email\": \"string\",\n  \"skills\": [\"string\"],\n  \"linkedin\": \"string (url)\",\n  \"github\": \"string (url)\",\n  \"youtube\": \"string (url)\",\n  \"services\": [{ \"name\": \"string\", \"description\": \"string\", \"price\": \"string\" }],\n  \"testimonials\": [{ \"name\": \"string\", \"text\": \"string\", \"rating\": \"number\" }],\n  \"theme\": { \"primary_color\": \"string\", \"secondary_color\": \"string\", \"font_family\": \"string\" }\n}\n```"
+          },
+          "response": [
+            {
+              "name": "200 OK \u2014 Profile Updated",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"success\",\n  \"data\": {\n    \"id\": \"b2c3d4e5-f6a7-8901-bcde-f12345678901\",\n    \"userId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n    \"slug\": \"johndoe\",\n    \"templateId\": \"basic\",\n    \"profileData\": \"{\\\"name\\\":\\\"John Doe\\\", ...}\",\n    \"aiAvatarUrl\": null,\n    \"isActive\": true\n  },\n  \"message\": \"Profile updated successfully\",\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"slug\": \"johndoe\",\n  \"profileData\": \"{...}\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/api/v1/cards/me",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "cards", "me"]
+                }
+              }
+            },
+            {
+              "name": "409 Conflict \u2014 Slug Already Taken",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"SLUG_ALREADY_EXISTS\",\n    \"message\": \"The slug 'johndoe' is already in use by another profile\",\n    \"details\": { \"field\": \"slug\" }\n  },\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "\uD83D\uDEE1\uFE0F Admin APIs",
+      "description": "Admin-only endpoints \u2014 requires JWT with ADMIN role.\n\n**Note:** These endpoints are only accessible to users with `role: \"ADMIN\"`. Regular users will receive a 403 Forbidden response.",
+      "item": [
+        {
+          "name": "\uD83D\uDC65 Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/users?page=0&size=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "users"],
+              "query": [
+                { "key": "page", "value": "0", "description": "Page number (0-based)" },
+                { "key": "size", "value": "20", "description": "Page size (max 100)" }
+              ]
+            },
+            "description": "Retrieve a paginated list of all registered users.\n\n**Required Role:** `ADMIN`\n\n**Query Parameters:**\n| Parameter | Type | Default | Description |\n|---|---|---|---|\n| `page` | int | 0 | Page number (0-based) |\n| `size` | int | 20 | Items per page (max 100) |\n\n**Response includes:** id, email, role, leadCredits, createdAt"
+          },
+          "response": [
+            {
+              "name": "200 OK \u2014 User List",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"success\",\n  \"data\": [\n    {\n      \"id\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n      \"email\": \"admin@cardpro.ai\",\n      \"role\": \"ADMIN\",\n      \"leadCredits\": 9999,\n      \"createdAt\": \"2026-07-01T08:00:00Z\"\n    },\n    {\n      \"id\": \"b2c3d4e5-f6a7-8901-bcde-f12345678901\",\n      \"email\": \"user@example.com\",\n      \"role\": \"USER\",\n      \"leadCredits\": 25,\n      \"createdAt\": \"2026-07-15T10:30:00Z\"\n    }\n  ],\n  \"pagination\": {\n    \"page\": 0,\n    \"size\": 20,\n    \"total\": 2,\n    \"totalPages\": 1\n  },\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/admin/users?page=0&size=20",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "admin", "users"],
+                  "query": [
+                    { "key": "page", "value": "0" },
+                    { "key": "size", "value": "20" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "403 Forbidden \u2014 Not an Admin",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"You do not have permission to access this resource\"\n  },\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "\uD83D\uDDD1\uFE0F Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "users", "{{user_id}}"]
+            },
+            "description": "Permanently delete a user account and all associated data.\n\n**Required Role:** `ADMIN`\n\n**Cascade Deletes:**\n- User's card profile\n- All captured leads\n- All transaction records\n- All refresh tokens\n\n**Warning:** This action is irreversible. Use with caution."
+          },
+          "response": [
+            {
+              "name": "204 No Content \u2014 User Deleted",
+              "status": "No Content",
+              "code": 204,
+              "header": [],
+              "body": "",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{token}}" }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/api/v1/admin/users/{{user_id}}",
+                  "host": ["{{base_url}}"],
+                  "path": ["api", "v1", "admin", "users", "{{user_id}}"]
+                }
+              }
+            },
+            {
+              "name": "404 Not Found \u2014 User Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"USER_NOT_FOUND\",\n    \"message\": \"User not found with id: a1b2c3d4-e5f6-7890-abcd-ef1234567890\"\n  },\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}"
+            },
+            {
+              "name": "403 Forbidden \u2014 Not an Admin",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"You do not have permission to access this resource\"\n  },\n  \"timestamp\": \"2026-07-28T10:30:00Z\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "id": "baseUrl",
+      "key": "base_url",
+      "value": "http://localhost:8765",
+      "type": "string",
+      "name": "API Gateway Base URL"
+    },
+    {
+      "id": "authToken",
+      "key": "token",
+      "value": "",
+      "type": "string",
+      "name": "JWT Access Token"
+    },
+    {
+      "id": "refreshToken",
+      "key": "refresh_token",
+      "value": "",
+      "type": "string",
+      "name": "JWT Refresh Token"
+    },
+    {
+      "id": "userId",
+      "key": "user_id",
+      "value": "",
+      "type": "string",
+      "name": "Authenticated User ID"
+    }
+  ]
+}
