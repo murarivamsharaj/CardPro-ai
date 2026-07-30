@@ -2,7 +2,8 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { STORAGE_KEYS } from '@/utils/constants';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8765/api/v1',
+  // Point directly to port 8083 if VITE_API_BASE_URL is not defined in your .env file
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8083',
   headers: {
     'Content-Type': 'application/json',
   },
