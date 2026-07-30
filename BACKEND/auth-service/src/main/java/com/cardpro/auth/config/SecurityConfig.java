@@ -3,9 +3,10 @@ package com.cardpro.auth.config;
 import com.cardpro.auth.security.InternalApiKeyFilter;
 import com.cardpro.auth.security.JwtAuthenticationFilter;
 import com.cardpro.auth.security.JwtAuthenticationProvider;
-import lombok.RequiredArgsConstructor;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -23,7 +24,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import jakarta.servlet.http.HttpServletResponse;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -53,61 +54,65 @@ import java.util.List;
  */
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
-
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final InternalApiKeyFilter internalApiKeyFilter;
-    private final JwtAuthenticationProvider jwtAuthenticationProvider;
 
     // ──────────────────────────────────────────────
     // Security Filter Chain
     // ──────────────────────────────────────────────
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(
+            HttpSecurity http,
+            @Lazy JwtAuthenticationFilter jwtAuthenticationFilter,
+            @Lazy InternalApiKeyFilter internalApiKeyFilter,
+            @Lazy JwtAuthenticationProvider jwtAuthenticationProvider) throws Exception {
         http
-            // ── CORS ──
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                // ── CORS ──
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-            // ── CSRF: disabled for stateless JWT auth ──
-            .csrf(AbstractHttpConfigurer::disable)
+                // ── CSRF: disabled for stateless JWT auth ──
+                .csrf(AbstractHttpConfigurer::disable)
 
-            // ── Session: stateless ──
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // ── Session: stateless ──
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-            // ── Register JwtAuthenticationProvider with the AuthenticationManager ──
-            .authenticationProvider(jwtAuthenticationProvider)
+                // ── Register JwtAuthenticationProvider with the AuthenticationManager ──
+                .authenticationProvider(jwtAuthenticationProvider)
 
-            // ── Exception handling ──
-            .exceptionHandling(ex -> ex
-                .authenticationEntryPoint(authenticationEntryPoint())
-                .accessDeniedHandler(accessDeniedHandler()))
+                // ── Exception handling ──
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(authenticationEntryPoint())
+                        .accessDeniedHandler(accessDeniedHandler()))
 
-            // ── Route authorization ──
-            .authorizeHttpRequests(auth -> auth
-                // Public endpoints
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll()
+                // ── Route authorization ──
+                // ── Route authorization ──
+                .authorizeHttpRequests(auth -> auth
+                        // Public endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll()
 
-                // Internal service endpoints (validated by InternalApiKeyFilter)
-                .requestMatchers("/api/v1/auth/internal/**").hasRole("INTERNAL_SERVICE")
+                        // ── ADD THESE 3 LINES FOR SWAGGER UI ──
+                        .requestMatchers("/v3/api-docs/**").permitAll()
+                        .requestMatchers("/swagger-ui/**").permitAll()
+                        .requestMatchers("/swagger-ui.html").permitAll()
 
-                // Actuator health checks
-                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                .requestMatchers("/actuator/**").authenticated()
+                        // Internal service endpoints (validated by InternalApiKeyFilter)
+                        .requestMatchers("/api/v1/auth/internal/**").hasRole("INTERNAL_SERVICE")
 
-                // All other requests require authentication
-                .anyRequest().authenticated()
-            )
+                        // Actuator health checks
+                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/**").authenticated()
 
-            // ── Filter ordering ──
-            // 1. InternalApiKeyFilter runs first to catch internal requests
-            // 2. JwtAuthenticationFilter runs for user JWT authentication
-            .addFilterBefore(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterAfter(jwtAuthenticationFilter, InternalApiKeyFilter.class);
+                        // All other requests require authentication
+                        .anyRequest().authenticated()
+                )
+
+                // ── Filter ordering ──
+                // Anchor both custom filters to built-in Spring Security filter positions
+                .addFilterBefore(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -145,7 +150,7 @@ public class SecurityConfig {
         config.setAllowedOriginPatterns(List.of("*"));  // Allow all origins (restricted at gateway)
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Internal-API-Key",
-            "X-User-Id", "X-Correlation-Id"));
+                "X-User-Id", "X-Correlation-Id"));
         config.setExposedHeaders(List.of("Authorization", "X-Correlation-Id"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
@@ -168,9 +173,9 @@ public class SecurityConfig {
             response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.getWriter().write(
-                "{\"status\":\"error\",\"error\":{\"code\":\"UNAUTHORIZED\"," +
-                "\"message\":\"Authentication is required to access this resource\"}," +
-                "\"timestamp\":\"" + java.time.Instant.now() + "\"}"
+                    "{\"status\":\"error\",\"error\":{\"code\":\"UNAUTHORIZED\"," +
+                            "\"message\":\"Authentication is required to access this resource\"}," +
+                            "\"timestamp\":\"" + Instant.now() + "\"}"
             );
         };
     }
@@ -184,9 +189,9 @@ public class SecurityConfig {
             response.setContentType("application/json");
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.getWriter().write(
-                "{\"status\":\"error\",\"error\":{\"code\":\"FORBIDDEN\"," +
-                "\"message\":\"You do not have permission to access this resource\"}," +
-                "\"timestamp\":\"" + java.time.Instant.now() + "\"}"
+                    "{\"status\":\"error\",\"error\":{\"code\":\"FORBIDDEN\"," +
+                            "\"message\":\"You do not have permission to access this resource\"}," +
+                            "\"timestamp\":\"" + Instant.now() + "\"}"
             );
         };
     }

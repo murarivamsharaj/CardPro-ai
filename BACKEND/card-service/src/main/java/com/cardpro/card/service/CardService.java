@@ -6,9 +6,12 @@ import com.cardpro.card.dto.response.CardResponse;
 import com.cardpro.card.dto.response.PublicCardResponse;
 import com.cardpro.card.entity.CardProfile;
 import com.cardpro.card.repository.CardProfileRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -18,6 +21,7 @@ public class CardService {
     private final CardProfileRepository cardProfileRepository;
     private final CardCacheService cardCacheService;
     private final SlugService slugService;
+    private final ObjectMapper objectMapper;
 
     public PublicCardResponse getPublicCard(String slug) {
         // Try cache first
@@ -59,7 +63,7 @@ public class CardService {
                 .userId(UUID.fromString(userId))
                 .slug(request.getSlug())
                 .templateId(request.getTemplateId() != null ? request.getTemplateId() : "basic")
-                .profileData(request.getProfileData())
+                .profileData(convertToJsonString(request.getProfileData()))
                 .build();
 
         profile = cardProfileRepository.save(profile);
@@ -74,9 +78,15 @@ public class CardService {
             slugService.validateSlug(request.getSlug());
             profile.setSlug(request.getSlug());
         }
-        if (request.getTemplateId() != null) profile.setTemplateId(request.getTemplateId());
-        if (request.getProfileData() != null) profile.setProfileData(request.getProfileData());
-        if (request.getIsActive() != null) profile.setIsActive(request.getIsActive());
+        if (request.getTemplateId() != null) {
+            profile.setTemplateId(request.getTemplateId());
+        }
+        if (request.getProfileData() != null) {
+            profile.setProfileData(convertToJsonString(request.getProfileData()));
+        }
+        if (request.getIsActive() != null) {
+            profile.setIsActive(request.getIsActive());
+        }
 
         profile = cardProfileRepository.save(profile);
         cardCacheService.evictCache(profile.getSlug());
@@ -114,5 +124,20 @@ public class CardService {
                 .aiAvatarUrl(profile.getAiAvatarUrl())
                 .isActive(profile.getIsActive())
                 .build();
+    }
+
+    /**
+     * Helper method to convert Map<String, Object> JSON payloads into a JSON String
+     * compatible with the database entity schema.
+     */
+    private String convertToJsonString(Map<String, Object> profileData) {
+        if (profileData == null) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(profileData);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize profile data to JSON string", e);
+        }
     }
 }
