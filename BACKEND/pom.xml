@@ -47,6 +47,7 @@
         <module>user-service</module>
         <module>ai-service</module>
         <module>payment-service</module>
+        <module>product-service</module>
 
     </modules>
 
