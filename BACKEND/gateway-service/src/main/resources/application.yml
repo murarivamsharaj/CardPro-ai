@@ -46,6 +46,11 @@ spring:
           filters:
             - StripPrefix=1
 
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/orders/**
+
         - id: admin-service
           uri: lb://card-service
           predicates:
@@ -63,7 +68,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@discovery-service:8761/eureka/
+      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@localhost:8761/eureka/
     register-with-eureka: true
     fetch-registry: true
   instance:
@@ -71,7 +76,7 @@ eureka:
 
 app:
   jwt:
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
     expiration-ms: 86400000
 
 management:
