@@ -6,6 +6,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      POSTGRES_MULTIPLE_DATABASES: auth_db,card_db,lead_db,payment_db,cardpro_orders
     ports:
       - "5432:5432"
     volumes:
@@ -150,6 +151,24 @@ services:
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
       RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
+      EUREKA_USERNAME: eureka
+      EUREKA_PASSWORD: eureka123
+
+  order-service:
+    build: ./BACKEND/order-service
+    ports:
+      - "8086:8086"
+    depends_on:
+      - postgres
+      - discovery-service
+    environment:
+      ORDER_DB_HOST: postgres
+      ORDER_DB_PORT: 5432
+      ORDER_DB_NAME: cardpro_orders
+      ORDER_DB_USERNAME: postgres
+      ORDER_DB_PASSWORD: postgres
+      JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
       EUREKA_USERNAME: eureka
       EUREKA_PASSWORD: eureka123
 
