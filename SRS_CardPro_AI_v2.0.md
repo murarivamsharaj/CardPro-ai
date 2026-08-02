@@ -1,4 +1,4 @@
-# Software Requirements Specification (SRS)
+﻿# Software Requirements Specification (SRS)
 
 ## CardPro AI — Digital Visiting Card & Lead SaaS
 
@@ -800,3 +800,4 @@ The following features are explicitly deferred to post-v1 releases but should be
 >
 > *This document serves as the single source of truth for all development phases.
 > All AI-assisted code generation should reference this SRS for context and requirements.*
+

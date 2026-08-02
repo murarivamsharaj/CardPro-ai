@@ -8,7 +8,24 @@ spring:
   cloud:
     gateway:
       default-filters:
-        - DedupeResponseHeader=Access-Control-Allow-Origin
+        - DedupeResponseHeader=Access-Control-Allow-Origin RETAIN_UNIQUE
+
+      # Added Global CORS Configuration for React Frontend
+#      globalcors:
+#        cors-configurations:
+#          '[/**]':
+#            allowedOrigins:
+#              - "http://localhost:5173"
+#              - "http://127.0.0.1:5173"
+#            allowedMethods:
+#              - GET
+#              - POST
+#              - PUT
+#              - DELETE
+#              - OPTIONS
+#              - PATCH
+#            allowedHeaders: "*"
+#            allowCredentials: true
 
       routes:
         - id: auth-service
@@ -46,6 +63,12 @@ spring:
           filters:
             - StripPrefix=1
 
+        # --> ADDED MISSING PRODUCT-SERVICE ROUTE <--
+        - id: product-service
+          uri: lb://product-service
+          predicates:
+            - Path=/api/products/**
+
         - id: order-service
           uri: lb://order-service
           predicates:
@@ -76,7 +99,7 @@ eureka:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
     expiration-ms: 86400000
 
 management:

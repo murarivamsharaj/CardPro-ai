@@ -1,7 +1,7 @@
-import api from './api'; // Ensure this points to your configured axios instance
+import api from './api';
 import { Product, ProductRequest } from '../types/product';
 
-const PRODUCT_API_URL = '/api/products'; // Routed via API gateway or proxy
+const PRODUCT_API_URL = '/api/products'; // Routed via API Gateway
 
 export const productService = {
   getAllProducts: async () => {
