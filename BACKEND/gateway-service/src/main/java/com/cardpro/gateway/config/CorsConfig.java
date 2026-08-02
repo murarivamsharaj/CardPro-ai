@@ -6,8 +6,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.List;
 
 @Configuration
 public class CorsConfig {
@@ -15,14 +14,21 @@ public class CorsConfig {
     @Bean
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration config = new CorsConfiguration();
-        // Allow your React Vite development server
-        config.setAllowedOrigins(Arrays.asList("http://localhost:5173", "http://127.0.0.1:5173"));
-        config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        config.setAllowedHeaders(Collections.singletonList("*"));
+
+        // Allow your React frontend
+        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174"));
+
+        // Allow all standard HTTP methods, especially OPTIONS for preflight
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+
+        // Allow all headers
+        config.setAllowedHeaders(List.of("*"));
+
+        // Allow credentials (cookies/auth headers)
         config.setAllowCredentials(true);
-        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        // Apply this policy globally to all routes
         source.registerCorsConfiguration("/**", config);
 
         return new CorsWebFilter(source);

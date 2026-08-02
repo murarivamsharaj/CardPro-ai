@@ -4,109 +4,72 @@ server:
 spring:
   application:
     name: gateway-service
-
   cloud:
     gateway:
-      default-filters:
-        - DedupeResponseHeader=Access-Control-Allow-Origin RETAIN_UNIQUE
-
-      # Added Global CORS Configuration for React Frontend
-#      globalcors:
-#        cors-configurations:
-#          '[/**]':
-#            allowedOrigins:
-#              - "http://localhost:5173"
-#              - "http://127.0.0.1:5173"
-#            allowedMethods:
-#              - GET
-#              - POST
-#              - PUT
-#              - DELETE
-#              - OPTIONS
-#              - PATCH
-#            allowedHeaders: "*"
-#            allowCredentials: true
-
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins:
+              - "http://localhost:5173"
+              - "http://localhost:5174"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+              - PATCH
+            allowed-headers: "*"
+            allow-credentials: true
       routes:
         - id: auth-service
-          uri: lb://auth-service
+          uri: lb://AUTH-SERVICE
           predicates:
             - Path=/api/v1/auth/**
-          filters:
-            - StripPrefix=1
+
+        - id: product-service
+          uri: lb://PRODUCT-SERVICE
+          predicates:
+            - Path=/api/v1/products/**, /api/products/**
 
         - id: card-service
-          uri: lb://card-service
+          uri: lb://CARD-SERVICE
           predicates:
-            - Path=/api/v1/cards/**
-          filters:
-            - StripPrefix=1
+            - Path=/api/v1/cards/**, /api/cards/**
 
         - id: lead-service
-          uri: lb://lead-service
+          uri: lb://LEAD-SERVICE
           predicates:
-            - Path=/api/v1/leads/**
-          filters:
-            - StripPrefix=1
-
-        - id: ai-service
-          uri: lb://ai-service
-          predicates:
-            - Path=/api/v1/ai/**
-          filters:
-            - StripPrefix=1
-
-        - id: payment-service
-          uri: lb://payment-service
-          predicates:
-            - Path=/api/v1/payments/**
-          filters:
-            - StripPrefix=1
-
-        # --> ADDED MISSING PRODUCT-SERVICE ROUTE <--
-        - id: product-service
-          uri: lb://product-service
-          predicates:
-            - Path=/api/products/**
+            - Path=/api/v1/leads/**, /api/leads/**
 
         - id: order-service
-          uri: lb://order-service
+          uri: lb://ORDER-SERVICE
           predicates:
-            - Path=/api/orders/**
+            - Path=/api/v1/orders/**, /api/orders/**
 
-        - id: admin-service
-          uri: lb://card-service
+        - id: payment-service
+          uri: lb://PAYMENT-SERVICE
           predicates:
-            - Path=/api/v1/admin/**
-          filters:
-            - StripPrefix=1
-
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-      timeout: 2000ms
-
-eureka:
-  client:
-    service-url:
-      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@localhost:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
-  instance:
-    prefer-ip-address: true
+            - Path=/api/v1/payments/**, /api/payments/**
 
 app:
   jwt:
     secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-    expiration-ms: 86400000
+    expiration: 86400000
+    refresh-expiration: 604800000
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://username:password@localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,gateway
+        include: health,info
   endpoint:
     health:
       show-details: always

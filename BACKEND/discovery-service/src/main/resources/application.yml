@@ -11,7 +11,7 @@ spring:
 
 eureka:
   instance:
-    hostname: discovery-service
+    hostname: localhost
     prefer-ip-address: true
     lease-renewal-interval-in-seconds: 10
     lease-expiration-duration-in-seconds: 30
@@ -23,7 +23,7 @@ eureka:
     register-with-eureka: false
     fetch-registry: false
     service-url:
-      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@${eureka.instance.hostname}:${server.port}/eureka/
+      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@localhost:${server.port}/eureka/
 
 management:
   endpoints:

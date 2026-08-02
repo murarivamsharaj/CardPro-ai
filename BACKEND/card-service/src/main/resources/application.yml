@@ -4,7 +4,6 @@ server:
 spring:
   application:
     name: card-service
-
   datasource:
     url: jdbc:postgresql://${CARD_DB_HOST:localhost}:${CARD_DB_PORT:5432}/${CARD_DB_NAME:card_db}
     username: ${CARD_DB_USERNAME:postgres}
@@ -14,7 +13,6 @@ spring:
       maximum-pool-size: 20
       minimum-idle: 10
       connection-timeout: 30000
-
   jpa:
     hibernate:
       ddl-auto: validate
@@ -23,12 +21,10 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-
   flyway:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
-
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -39,7 +35,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@discovery-service:8761/eureka/
+      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@localhost:8761/eureka/
     register-with-eureka: true
     fetch-registry: true
   instance:

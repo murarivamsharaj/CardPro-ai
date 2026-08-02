@@ -4,17 +4,15 @@ server:
 spring:
   application:
     name: order-service
-
   datasource:
     url: jdbc:postgresql://${ORDER_DB_HOST:localhost}:${ORDER_DB_PORT:5432}/${ORDER_DB_NAME:cardpro_orders}
     username: ${ORDER_DB_USERNAME:postgres}
-    password: murari
+    password: ${ORDER_DB_PASSWORD:murari}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5
       connection-timeout: 30000
-
   jpa:
     hibernate:
       ddl-auto: validate
@@ -24,7 +22,6 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-
   flyway:
     enabled: true
     baseline-on-migrate: true

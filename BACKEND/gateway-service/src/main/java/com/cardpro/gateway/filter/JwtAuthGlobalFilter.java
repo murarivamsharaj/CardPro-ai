@@ -33,7 +33,7 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        // 2. Allow public paths without checking JWT token
+        // 2. Allow public paths without checking for a JWT token
         if (isPublicPath(path)) {
             return chain.filter(exchange);
         }
@@ -51,7 +51,7 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
             String email = jwtUtil.getEmail(token);
             List<String> roles = jwtUtil.getRoles(token);
 
-            // Mutate the request to pass user details to downstream microservices
+            // 3. Mutate request headers to pass user info to downstream microservices
             ServerHttpRequest mutatedRequest = request.mutate()
                     .header("X-User-Id", userId)
                     .header("X-User-Email", email)
@@ -68,7 +68,7 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
     private boolean isPublicPath(String path) {
         return path.contains("/auth/")
                 || path.contains("/api/v1/auth/")
-                || path.contains("/api/orders") // Whitelist orders for testing
+                || path.contains("/api/orders") // Whitelisted for testing
                 || path.contains("/v3/api-docs")
                 || path.contains("/swagger-ui")
                 || (path.contains("/cards/") && !path.contains("/me") && !path.contains("/admin"))
