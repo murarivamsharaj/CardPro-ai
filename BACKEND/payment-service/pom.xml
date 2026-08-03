@@ -9,7 +9,7 @@
     <artifactId>payment-service</artifactId>
     <name>CardPro Payment Service</name>
     <description>Payment Processing Service</description>
-    <properties><razorpay-sdk.version>1.4.4</razorpay-sdk.version></properties>
+    <properties><razorpay-sdk.version>1.4.10</razorpay-sdk.version></properties>
     <dependencies>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-web</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security</artifactId></dependency>
