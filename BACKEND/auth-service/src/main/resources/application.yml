@@ -41,7 +41,8 @@ eureka:
     service-url:
       defaultZone: http://eureka:eureka123@localhost:8761/eureka/
   instance:
-    prefer-ip-address: true
+    hostname: localhost       # 👈 Add this new line
+    prefer-ip-address: false  # 👈 Change this from 'true' to 'false'
 
 
 # Application custom configuration

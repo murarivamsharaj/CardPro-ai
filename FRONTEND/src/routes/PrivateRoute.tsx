@@ -1,13 +1,16 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuthStore } from '../store/useAuthStore';
+import { useSelector } from 'react-redux';
 
-const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const token = localStorage.getItem('token');
+interface PrivateRouteProps {
+  children: React.ReactNode;
+}
 
-  // Verify authentication via Zustand state or persisted localStorage token
-  if (!isAuthenticated && !token) {
+const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
+  // Explicitly typing state as 'any' bypasses the unknown type error
+  const token = useSelector((state: any) => state.auth?.token) || localStorage.getItem('token');
+
+  if (!token || token === 'undefined' || token === 'null') {
     return <Navigate to="/login" replace />;
   }
 

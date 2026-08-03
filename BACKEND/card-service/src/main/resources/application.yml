@@ -2,12 +2,14 @@ server:
   port: 8082
 
 spring:
+  main:
+    allow-bean-definition-overriding: true
   application:
     name: card-service
   datasource:
     url: jdbc:postgresql://${CARD_DB_HOST:localhost}:${CARD_DB_PORT:5432}/${CARD_DB_NAME:card_db}
     username: ${CARD_DB_USERNAME:postgres}
-    password: ${CARD_DB_PASSWORD:postgres}
+    password: ${CARD_DB_PASSWORD:murari}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20
@@ -39,13 +41,14 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
   instance:
-    prefer-ip-address: true
+    hostname: localhost
+    prefer-ip-address: false
 
 app:
   jwt:
-    secret: ${JWT_SECRET}
+    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
   internal:
-    api-key: ${INTERNAL_API_KEY}
+    api-key: cardpro-secret-key
   cache:
     profile-ttl-seconds: 300
 
@@ -57,3 +60,6 @@ management:
   endpoint:
     health:
       show-details: always
+  health:
+    redis:
+      enabled: false

@@ -1,5 +1,5 @@
 server:
-  port: 8083
+  port: 8084
 
 spring:
   application:
@@ -7,7 +7,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${LEAD_DB_HOST:localhost}:${LEAD_DB_PORT:5432}/${LEAD_DB_NAME:lead_db}
     username: ${LEAD_DB_USERNAME:postgres}
-    password: ${LEAD_DB_PASSWORD:postgres}
+    password: ${LEAD_DB_PASSWORD:murari}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -37,9 +37,9 @@ eureka:
 
 app:
   jwt:
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
   internal:
-    api-key: ${INTERNAL_API_KEY}
+    api-key: ${INTERNAL_API_KEY:cardpro-local-secret}
 
 management:
   endpoints:

@@ -1,7 +1,8 @@
 import api from './api';
 import { Product, ProductRequest } from '../types/product';
 
-const PRODUCT_API_URL = '/api/products'; // Routed via API Gateway
+// ✅ CORRECTED: Added /v1 to match the API Gateway configuration
+const PRODUCT_API_URL = '/api/v1/products'; 
 
 export const productService = {
   getAllProducts: async () => {

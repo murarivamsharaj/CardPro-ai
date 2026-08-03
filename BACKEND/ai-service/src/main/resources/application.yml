@@ -1,5 +1,5 @@
 server:
-  port: 8084
+  port: 8087
 
 spring:
   application:
@@ -14,7 +14,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@discovery-service:8761/eureka/
+      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@localhost:8761/eureka/
     register-with-eureka: true
     fetch-registry: true
   instance:
@@ -22,12 +22,12 @@ eureka:
 
 app:
   jwt:
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
   internal:
-    api-key: ${INTERNAL_API_KEY}
+    api-key: ${INTERNAL_API_KEY:cardpro-local-secret}
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY}
+      api-key: ${OPENAI_API_KEY:dummy-openai-key}
       model: ${OPENAI_MODEL:gpt-4}
       bio-generation:
         max-tokens: 500
@@ -38,10 +38,10 @@ app:
         temperature: 0.5
     vision:
       removebg:
-        api-key: ${REMOVEBG_API_KEY}
+        api-key: ${REMOVEBG_API_KEY:dummy-removebg-key}
         timeout-seconds: 30
       replicate:
-        api-key: ${REPLICATE_API_KEY}
+        api-key: ${REPLICATE_API_KEY:dummy-replicate-key}
         model: nightmareai/real-esrgan:42fed1c5
         timeout-seconds: 60
     fallback:
@@ -56,3 +56,6 @@ management:
   endpoint:
     health:
       show-details: always
+  health:
+    redis:
+      enabled: false

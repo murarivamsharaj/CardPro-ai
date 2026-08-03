@@ -12,9 +12,9 @@ export interface RegisterRequest {
 
 export interface AuthResponse {
   token: string;
-  refreshToken: string;
-  tokenType: string;
-  expiresIn: number;
+  refreshToken?: string;
+  tokenType?: string;
+  expiresIn?: number;
   user: {
     id: string;
     email: string;
@@ -24,9 +24,13 @@ export interface AuthResponse {
 
 export const authService = {
   async login(data: LoginRequest): Promise<AuthResponse> {
+    // Hardcoding the full path ensures it hits the Gateway correctly 
+    // regardless of what your api.ts baseURL is set to.
     const response = await api.post('/api/v1/auth/login', data);
+    
     // Check for both token or accessToken in case the backend property name varies
-    const token = response.data.token || (response.data as any).accessToken;
+    const token = response.data.token || response.data.accessToken;
+    
     if (token) {
       localStorage.setItem('token', token);
     }
@@ -35,7 +39,8 @@ export const authService = {
 
   async register(data: RegisterRequest): Promise<AuthResponse> {
     const response = await api.post('/api/v1/auth/register', data);
-    const token = response.data.token || (response.data as any).accessToken;
+    
+    const token = response.data.token || response.data.accessToken;
     if (token) {
       localStorage.setItem('token', token);
     }

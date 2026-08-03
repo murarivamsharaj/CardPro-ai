@@ -34,51 +34,27 @@ public class SecurityConfig {
             @Lazy InternalApiKeyFilter internalApiKeyFilter,
             @Lazy JwtAuthenticationProvider jwtAuthenticationProvider) throws Exception {
         http
-                // ── CORS: Disabled because Gateway handles CORS globally ──
                 .cors(AbstractHttpConfigurer::disable)
-
-                // ── CSRF: disabled for stateless JWT auth ──
                 .csrf(AbstractHttpConfigurer::disable)
-
-                // ── Session: stateless ──
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                // ── Register JwtAuthenticationProvider with the AuthenticationManager ──
                 .authenticationProvider(jwtAuthenticationProvider)
-
-                // ── Exception handling ──
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authenticationEntryPoint())
                         .accessDeniedHandler(accessDeniedHandler()))
-
-                // ── Route authorization ──
                 .authorizeHttpRequests(auth -> auth
-                        // Allow CORS Preflight requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // Public endpoints
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll()
-
-                        // Swagger UI
                         .requestMatchers("/v3/api-docs/**").permitAll()
                         .requestMatchers("/swagger-ui/**").permitAll()
                         .requestMatchers("/swagger-ui.html").permitAll()
-
-                        // Internal service endpoints
                         .requestMatchers("/api/v1/auth/internal/**").hasRole("INTERNAL_SERVICE")
-
-                        // Actuator health checks
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                         .requestMatchers("/actuator/**").authenticated()
-
-                        // All other requests require authentication
                         .anyRequest().authenticated()
                 )
-
-                // ── Filter ordering ──
                 .addFilterBefore(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
