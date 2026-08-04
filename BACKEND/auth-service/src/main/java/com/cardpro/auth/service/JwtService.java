@@ -48,10 +48,13 @@ public class JwtService {
      * Generates an access JWT for the given user principal.
      */
     public String generateAccessToken(UserPrincipal principal) {
+        String roleName = principal.getRole().name();
+        String formattedRole = roleName.startsWith("ROLE_") ? roleName : "ROLE_" + roleName;
+
         return generateAccessToken(
-            principal.getId().toString(),
-            principal.getEmail(),
-            List.of(principal.getRole().name())
+                principal.getId().toString(),
+                principal.getEmail(),
+                List.of(formattedRole)
         );
     }
 
@@ -60,15 +63,23 @@ public class JwtService {
      */
     public String generateAccessToken(String userId, String email, List<String> roles) {
         Date now = new Date();
+
+        // Ensure all roles contain the ROLE_ prefix for Spring Security compatibility
+        List<String> formattedRoles = roles != null
+                ? roles.stream()
+                  .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
+                  .collect(Collectors.toList())
+                : List.of();
+
         return Jwts.builder()
-            .id(UUID.randomUUID().toString())
-            .subject(userId)
-            .claim("email", email)
-            .claim("roles", roles)
-            .issuedAt(now)
-            .expiration(new Date(now.getTime() + accessExpirationMs))
-            .signWith(secretKey)
-            .compact();
+                .id(UUID.randomUUID().toString())
+                .subject(userId)
+                .claim("email", email)
+                .claim("roles", formattedRoles)
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + accessExpirationMs))
+                .signWith(secretKey)
+                .compact();
     }
 
     /**
@@ -77,13 +88,13 @@ public class JwtService {
     public String generateRefreshToken(String userId) {
         Date now = new Date();
         return Jwts.builder()
-            .id(UUID.randomUUID().toString())
-            .subject(userId)
-            .claim("type", "refresh")
-            .issuedAt(now)
-            .expiration(new Date(now.getTime() + refreshExpirationMs))
-            .signWith(secretKey)
-            .compact();
+                .id(UUID.randomUUID().toString())
+                .subject(userId)
+                .claim("type", "refresh")
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + refreshExpirationMs))
+                .signWith(secretKey)
+                .compact();
     }
 
     // ──────────────────────────────────────────────
@@ -111,10 +122,10 @@ public class JwtService {
     public List<String> extractRoles(String token) {
         List<String> roles = extractClaims(token).get("roles", List.class);
         return roles != null
-            ? roles.stream()
-                .map(Object::toString)
-                .collect(Collectors.toList())
-            : List.of();
+                ? roles.stream()
+                  .map(Object::toString)
+                  .collect(Collectors.toList())
+                : List.of();
     }
 
     /**
@@ -141,10 +152,10 @@ public class JwtService {
      */
     public Claims extractClaims(String token) {
         return Jwts.parser()
-            .verifyWith(secretKey)
-            .build()
-            .parseSignedClaims(token)
-            .getPayload();
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     /**

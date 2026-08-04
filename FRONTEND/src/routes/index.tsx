@@ -2,10 +2,8 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { LoginPage } from '../pages/auth/LoginPage';
 import { RegisterPage } from '../pages/auth/RegisterPage';
-
-// ✅ FIXED: Point to the exact file name shown in your explorer
 import { DashboardPage } from '../pages/dashboard/DashboardPage'; 
-
+import { CreateCardPage } from '../pages/dashboard/CreateCardPage'; // 👈 1. Import your CreateCardPage component (adjust path if needed)
 import PrivateRoute from './PrivateRoute'; 
 
 export const AppRoutes = () => {
@@ -16,8 +14,14 @@ export const AppRoutes = () => {
       
       <Route path="/dashboard" element={
         <PrivateRoute>
-          {/* ✅ FIXED: Use the correct component name */}
           <DashboardPage />
+        </PrivateRoute>
+      } />
+
+      {/* 👇 2. Add the Create Card route protected by PrivateRoute */}
+      <Route path="/create-card" element={
+        <PrivateRoute>
+          <CreateCardPage />
         </PrivateRoute>
       } />
     </Routes>

@@ -9,6 +9,8 @@ import com.cardpro.card.repository.CardProfileRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -56,6 +58,16 @@ public class CardService {
         return mapToResponse(profile);
     }
 
+    public Page<CardResponse> getAllCards(Pageable pageable) {
+        return cardProfileRepository.findAll(pageable)
+                .map(this::mapToResponse);
+    }
+
+    public Page<CardResponse> searchCards(String keyword, Pageable pageable) {
+        return cardProfileRepository.findBySlugContainingIgnoreCase(keyword, pageable)
+                .map(this::mapToResponse);
+    }
+
     public CardResponse createCard(String userId, CreateCardRequest request) {
         slugService.validateSlug(request.getSlug());
 
@@ -101,7 +113,6 @@ public class CardService {
         cardCacheService.evictCache(profile.getSlug());
     }
 
-    // --- NEW METHOD ADDED HERE TO FIX THE COMPILATION ERROR ---
     public void incrementViewCount(UUID profileId) {
         CardProfile profile = cardProfileRepository.findById(profileId)
                 .orElseThrow(() -> new RuntimeException("Card profile not found"));
@@ -126,10 +137,6 @@ public class CardService {
                 .build();
     }
 
-    /**
-     * Helper method to convert Map<String, Object> JSON payloads into a JSON String
-     * compatible with the database entity schema.
-     */
     private String convertToJsonString(Map<String, Object> profileData) {
         if (profileData == null) {
             return null;
