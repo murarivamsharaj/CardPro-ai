@@ -77,9 +77,7 @@ export default function App() {
   );
 }
 
-/**
- * Placeholder page for routes that haven't been fully implemented yet.
- */
+
 function PlaceholderPage({ title }: { title: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-20">
