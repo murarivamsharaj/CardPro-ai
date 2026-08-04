@@ -1,16 +1,16 @@
 <div align="center">
-  <img src="[https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)" alt="Java 21"/>
-  <img src="[https://img.shields.io/badge/Spring_Boot-3-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white](https://img.shields.io/badge/Spring_Boot-3-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white)" alt="Spring Boot 3"/>
-  <img src="[https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB](https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)" alt="React 18"/>
-  <img src="[https://img.shields.io/badge/PostgreSQL-15-316192?style=for-the-badge&logo=postgresql&logoColor=white](https://img.shields.io/badge/PostgreSQL-15-316192?style=for-the-badge&logo=postgresql&logoColor=white)" alt="PostgreSQL 15"/>
-  <img src="[https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white](https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white)" alt="Redis 7"/>
-  <img src="[https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)" alt="Docker"/>
+  <img src="https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 21"/>
+  <img src="https://img.shields.io/badge/Spring_Boot-3-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white" alt="Spring Boot 3"/>
+  <img src="https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React 18"/>
+  <img src="https://img.shields.io/badge/PostgreSQL-15-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL 15"/>
+  <img src="https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis 7"/>
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"/>
   <br/>
-  <img src="[https://img.shields.io/badge/Microservices-Spring_Cloud-6DB33F?style=flat-square](https://img.shields.io/badge/Microservices-Spring_Cloud-6DB33F?style=flat-square)" alt="Microservices"/>
-  <img src="[https://img.shields.io/badge/JWT-Auth-000000?style=flat-square&logo=json-web-tokens](https://img.shields.io/badge/JWT-Auth-000000?style=flat-square&logo=json-web-tokens)" alt="JWT"/>
-  <img src="[https://img.shields.io/badge/Razorpay-Payments-02042B?style=flat-square&logo=razorpay](https://img.shields.io/badge/Razorpay-Payments-02042B?style=flat-square&logo=razorpay)" alt="Razorpay"/>
-  <img src="[https://img.shields.io/badge/OpenAI-GPT-412991?style=flat-square&logo=openai](https://img.shields.io/badge/OpenAI-GPT-412991?style=flat-square&logo=openai)" alt="OpenAI"/>
-  <img src="[https://img.shields.io/badge/license-MIT-green?style=flat-square](https://img.shields.io/badge/license-MIT-green?style=flat-square)" alt="MIT License"/>
+  <img src="https://img.shields.io/badge/Microservices-Spring_Cloud-6DB33F?style=flat-square" alt="Microservices"/>
+  <img src="https://img.shields.io/badge/JWT-Auth-000000?style=flat-square&logo=json-web-tokens" alt="JWT"/>
+  <img src="https://img.shields.io/badge/Razorpay-Payments-02042B?style=flat-square&logo=razorpay" alt="Razorpay"/>
+  <img src="https://img.shields.io/badge/OpenAI-GPT-412991?style=flat-square&logo=openai" alt="OpenAI"/>
+  <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="MIT License"/>
 </div>
 
 <br/>
