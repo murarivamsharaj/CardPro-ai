@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '../context/AuthContext';
+import { NotificationBell } from '../components/common/NotificationBell';
 
 interface NavbarProps {
   onMenuClick: () => void;
@@ -32,6 +33,9 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
 
       {/* Right section */}
       <div className="flex items-center gap-3">
+        {/* Notification Bell with History Drawer */}
+        <NotificationBell />
+
         <span className="hidden text-sm text-gray-500 sm:block">
           {user?.email}
         </span>
@@ -39,7 +43,7 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
         {/* Logout button */}
         <button
           onClick={handleLogout}
-          className="btn-secondary text-xs px-3 py-1.5"
+          className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
           title="Logout"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

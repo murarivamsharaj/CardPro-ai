@@ -1,91 +1,131 @@
 import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { createCard } from '../../store/slices/cardSlice'; // Adjust import path if needed
+import toast from 'react-hot-toast';
+import { createCard } from '../../store/slices/cardSlice';
+import { ImageUpload } from '../../components/common/ImageUpload';
 
 export const CreateCardPage: React.FC = () => {
   const dispatch = useDispatch<any>();
   const navigate = useNavigate();
-  
-  const [slug, setSlug] = useState('');
-  const [templateId, setTemplateId] = useState('1');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { loading, error } = useSelector((state: any) => state.card);
+
+  const [formData, setFormData] = useState({
+    slug: '',
+    templateId: 'default',
+    profileData: {
+      fullName: '',
+      title: '',
+      bio: '',
+      avatarUrl: '',
+      phone: '',
+      email: '',
+    },
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      profileData: {
+        ...formData.profileData,
+        [name]: value,
+      },
+    });
+  };
+
+  const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      slug: e.target.value,
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    try {
-      // 👇 Now we are sending exactly what your Java backend demands
-      await dispatch(createCard({ 
-        slug, 
-        templateId,
-        profileData: {
-          name: "Chittipoola Murari",
-          title: "Software Developer",
-          bio: "Learning Java and React!"
-        }
-      })).unwrap();
-      
-      // Navigate back to dashboard once successfully saved
-      navigate('/dashboard');
-    } catch (err: any) {
-      setError(err || 'Failed to create card. Please try again.');
-      setLoading(false);
+    const resultAction = await dispatch(createCard(formData));
+    
+    if (createCard.fulfilled.match(resultAction)) {
+      toast.success('Digital card created successfully! 🎉');
+      navigate('/dashboard/cards');
+    } else {
+      toast.error((resultAction.payload as string) || 'Failed to create card');
     }
   };
 
   return (
-    <div className="p-8 max-w-xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Create New Digital Card</h1>
-      
-      {error && <p className="mb-4 text-red-500 bg-red-50 p-3 rounded-lg border border-red-200">{error}</p>}
+    <div className="max-w-3xl mx-auto p-8 bg-white shadow rounded-lg mt-8">
+      <h1 className="text-2xl font-bold mb-6">Create New Digital Card</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4 bg-white p-6 rounded-lg shadow border border-gray-200">
+      {error && <p className="text-red-500 mb-4">{error}</p>}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Card Slug</label>
+          <label className="block text-sm font-medium text-gray-700">Card URL Slug (Unique Identifier)</label>
           <input
             type="text"
             required
-            value={slug}
-            onChange={(e) => setSlug(e.target.value)}
-            placeholder="e.g. murari-card"
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="e.g. john-doe"
+            value={formData.slug}
+            onChange={handleSlugChange}
+            className="mt-1 block w-full rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          />
+        </div>
+
+        <ImageUpload
+          label="Profile Avatar / Logo"
+          currentImage={formData.profileData.avatarUrl}
+          onUploadSuccess={(url) => {
+            setFormData({
+              ...formData,
+              profileData: { ...formData.profileData, avatarUrl: url },
+            });
+            toast.success('Avatar uploaded successfully!');
+          }}
+        />
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Full Name</label>
+          <input
+            type="text"
+            name="fullName"
+            required
+            value={formData.profileData.fullName}
+            onChange={handleChange}
+            className="mt-1 block w-full rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Template ID</label>
+          <label className="block text-sm font-medium text-gray-700">Professional Title</label>
           <input
             type="text"
-            required
-            value={templateId}
-            onChange={(e) => setTemplateId(e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            name="title"
+            placeholder="e.g. Senior Software Engineer"
+            value={formData.profileData.title}
+            onChange={handleChange}
+            className="mt-1 block w-full rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
 
-        <div className="flex gap-4 pt-4">
-          <button
-            type="submit"
-            disabled={loading}
-            className={`px-5 py-2.5 font-medium rounded-lg text-white transition ${
-              loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
-            }`}
-          >
-            {loading ? 'Saving...' : 'Save Card'}
-          </button>
-          
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard')}
-            className="px-5 py-2.5 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition"
-          >
-            Cancel
-          </button>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Short Bio</label>
+          <textarea
+            name="bio"
+            rows={3}
+            value={formData.profileData.bio}
+            onChange={handleChange}
+            className="mt-1 block w-full rounded-md border border-gray-300 p-2 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          />
         </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-md hover:bg-blue-700 transition disabled:opacity-50"
+        >
+          {loading ? 'Creating Card...' : 'Create Card'}
+        </button>
       </form>
     </div>
   );

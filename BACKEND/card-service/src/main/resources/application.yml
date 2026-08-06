@@ -15,6 +15,11 @@ spring:
       maximum-pool-size: 20
       minimum-idle: 10
       connection-timeout: 30000
+      servlet:
+        multipart:
+          max-file-size: 10MB
+          max-request-size: 10MB
+
   jpa:
     hibernate:
       ddl-auto: validate

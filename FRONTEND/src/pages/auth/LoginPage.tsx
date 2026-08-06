@@ -1,89 +1,60 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { loginUser } from '../../store/slices/authSlice';
+import { useAuth } from '../../context/AuthContext';
 
 export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
+  const { login } = useAuth();
   const navigate = useNavigate();
-  const dispatch = useDispatch<any>();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
-
     try {
-      // 1. Dispatch the Redux login thunk and unwrap to catch errors
-      await dispatch(loginUser({ email, password })).unwrap();
-
-      // 2. Route securely to dashboard
+      await login(email, password);
       navigate('/dashboard');
-    } catch (err: any) {
-      console.error('Login error:', err);
-      // Our authSlice already extracts the error message, so we just display it
-      setError(typeof err === 'string' ? err : 'Invalid email or password. Please try again.');
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Login failed', error);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">CardPro AI</h1>
-          <p className="text-sm text-gray-500 mt-1">Sign in to manage your products</p>
-        </div>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 text-sm rounded">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="space-y-4">
+    <div className="flex min-h-screen w-full items-center justify-center bg-gray-100 p-4">
+      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-lg">
+        <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">Welcome Back</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Email Address</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md p-2.5 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="admin@cardpro.com"
+              placeholder="Enter your email"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700">Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md p-2.5 focus:ring-blue-500 focus:border-blue-500"
               placeholder="••••••••"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-
           <button
             type="submit"
-            disabled={loading}
-            className={`w-full text-white font-semibold py-2.5 rounded-md transition duration-200 ${
-              loading
-                ? 'bg-blue-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700'
-            }`}
+            className="w-full bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-200"
           >
-            {loading ? 'Signing In...' : 'Sign In'}
+            Sign in
           </button>
         </form>
       </div>
     </div>
   );
 };
+
+export default LoginPage;
