@@ -1,5 +1,9 @@
 package com.cardpro.orderservice.exception;
 
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +26,11 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(OrderNotFoundException.class)
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "404", description = "Order Not Found",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"ORDER_NOT_FOUND\",\n    \"message\": \"Order not found with ID: 123\",\n    \"details\": {\"orderId\": \"123\"}\n  },\n  \"timestamp\": \"2026-08-07T12:00:00Z\"\n}")))
+    })
     public ResponseEntity<Map<String, Object>> handleOrderNotFound(OrderNotFoundException ex) {
         log.warn("Order not found: {}", ex.getMessage());
 
@@ -34,6 +43,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ProductUnavailableException.class)
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "400", description = "Product Unavailable",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"PRODUCT_UNAVAILABLE\",\n    \"message\": \"Product out of stock\",\n    \"details\": {\"productId\": \"456\"}\n  },\n  \"timestamp\": \"2026-08-07T12:00:00Z\"\n}")))
+    })
     public ResponseEntity<Map<String, Object>> handleProductUnavailable(ProductUnavailableException ex) {
         log.warn("Product unavailable: {}", ex.getMessage());
 
@@ -46,6 +60,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "400", description = "Validation Failed",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"message\": \"Invalid request parameters\",\n    \"details\": {\"quantity\": \"must be greater than 0\"}\n  },\n  \"timestamp\": \"2026-08-07T12:00:00Z\"\n}")))
+    })
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         log.debug("Validation failed: {}", ex.getMessage());
 
@@ -63,6 +82,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "400", description = "Bad Request",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"BAD_REQUEST\",\n    \"message\": \"Invalid argument passed\",\n    \"details\": null\n  },\n  \"timestamp\": \"2026-08-07T12:00:00Z\"\n}")))
+    })
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
         log.warn("Illegal argument: {}", ex.getMessage());
 
@@ -75,6 +99,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "500", description = "Internal Server Error",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"INTERNAL_ERROR\",\n    \"message\": \"An unexpected error occurred. Please try again later.\",\n    \"details\": null\n  },\n  \"timestamp\": \"2026-08-07T12:00:00Z\"\n}")))
+    })
     public ResponseEntity<Map<String, Object>> handleGeneric(Exception ex) {
         log.error("Unhandled exception", ex);
 

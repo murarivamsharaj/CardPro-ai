@@ -61,6 +61,18 @@ app:
     api-key: cardpro-secret-key
 
 
+# SpringDoc Swagger UI Configuration (Explicitly added)
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    try-it-out-enabled: true
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+
 # Actuator monitoring
 management:
   endpoints:
@@ -71,3 +83,8 @@ management:
   endpoint:
     health:
       show-details: always
+
+logging:
+  level:
+    org.springframework.security: TRACE
+    org.springdoc: DEBUG

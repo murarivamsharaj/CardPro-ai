@@ -1,5 +1,9 @@
 package com.cardpro.card.exception;
 
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -15,6 +19,11 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "400", description = "Validation Failed",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(example = "{\n  \"status\": \"error\",\n  \"error\": {\n    \"code\": \"VALIDATION_FAILED\",\n    \"message\": \"Invalid request parameters\",\n    \"details\": {\n      \"email\": \"must be a well-formed email address\"\n    }\n  },\n  \"timestamp\": \"2026-08-07T12:00:00Z\"\n}")))
+    })
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = new HashMap<>();
 

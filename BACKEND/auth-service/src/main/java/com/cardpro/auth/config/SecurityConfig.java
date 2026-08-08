@@ -4,6 +4,7 @@ import com.cardpro.auth.security.InternalApiKeyFilter;
 import com.cardpro.auth.security.JwtAuthenticationFilter;
 import com.cardpro.auth.security.JwtAuthenticationProvider;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -12,7 +13,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,10 +21,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-import java.time.Instant;
-
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
     @Bean
@@ -33,28 +32,57 @@ public class SecurityConfig {
             @Lazy JwtAuthenticationFilter jwtAuthenticationFilter,
             @Lazy InternalApiKeyFilter internalApiKeyFilter,
             @Lazy JwtAuthenticationProvider jwtAuthenticationProvider) throws Exception {
+
         http
-                .cors(AbstractHttpConfigurer::disable)
-                .csrf(AbstractHttpConfigurer::disable)
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.disable())
+
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
                 .authenticationProvider(jwtAuthenticationProvider)
+
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authenticationEntryPoint())
                         .accessDeniedHandler(accessDeniedHandler()))
+
                 .authorizeHttpRequests(auth -> auth
+
+                        // Swagger & OpenAPI documentation endpoints
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/v3/api-docs"
+                        ).permitAll()
+
+                        // Allow all pre-flight CORS requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/register").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/refresh").permitAll()
-                        .requestMatchers("/v3/api-docs/**").permitAll()
-                        .requestMatchers("/swagger-ui/**").permitAll()
-                        .requestMatchers("/swagger-ui.html").permitAll()
-                        .requestMatchers("/api/v1/auth/internal/**").hasRole("INTERNAL_SERVICE")
-                        .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                        .requestMatchers("/actuator/**").authenticated()
-                        .anyRequest().authenticated()
+
+                        // Public APIs (Wildcards appended to guarantee path matching)
+                        .requestMatchers(
+                                "/api/v1/auth/login", "/api/v1/auth/login/**",
+                                "/api/v1/auth/register", "/api/v1/auth/register/**",
+                                "/api/v1/auth/refresh", "/api/v1/auth/refresh/**",
+                                "/error"
+                        ).permitAll()
+
+                        // Health and monitoring
+                        .requestMatchers(
+                                "/actuator/health",
+                                "/actuator/info"
+                        ).permitAll()
+
+                        // Internal APIs
+                        .requestMatchers("/api/v1/auth/internal/**")
+                        .hasRole("INTERNAL_SERVICE")
+
+                        // Everything else requires authentication
+                        .anyRequest()
+                        .authenticated()
                 )
+
+                // Register custom filters
                 .addFilterBefore(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -63,38 +91,46 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
+            AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
     }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(10);
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
     public AuthenticationEntryPoint authenticationEntryPoint() {
-        return (request, response, authException) -> {
-            response.setContentType("application/json");
+        return (request, response, ex) -> {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.getWriter().write(
-                    "{\"status\":\"error\",\"error\":{\"code\":\"UNAUTHORIZED\"," +
-                            "\"message\":\"Authentication is required to access this resource\"}," +
-                            "\"timestamp\":\"" + Instant.now() + "\"}"
-            );
+            response.setContentType("application/json");
+            response.getWriter().write("""
+                    {
+                      "status":"error",
+                      "error":{
+                        "code":"UNAUTHORIZED",
+                        "message":"Authentication required"
+                      }
+                    }
+                    """);
         };
     }
 
     @Bean
     public AccessDeniedHandler accessDeniedHandler() {
-        return (request, response, accessDeniedException) -> {
-            response.setContentType("application/json");
+        return (request, response, ex) -> {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            response.getWriter().write(
-                    "{\"status\":\"error\",\"error\":{\"code\":\"FORBIDDEN\"," +
-                            "\"message\":\"You do not have permission to access this resource\"}," +
-                            "\"timestamp\":\"" + Instant.now() + "\"}"
-            );
+            response.setContentType("application/json");
+            response.getWriter().write("""
+                    {
+                      "status":"error",
+                      "error":{
+                        "code":"FORBIDDEN",
+                        "message":"Access denied"
+                      }
+                    }
+                    """);
         };
     }
 }
