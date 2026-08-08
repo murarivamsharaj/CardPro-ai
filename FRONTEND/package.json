@@ -24,7 +24,7 @@
     "react-router-dom": "^6.23.0",
     "recharts": "^3.10.1",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5.4.0",
+    "typescript": "^7.0.2",
     "vcard-creator": "^1.0.0",
     "vite": "^5.4.0",
     "zustand": "^4.5.0"
@@ -37,7 +37,7 @@
     "eslint": "^8.57.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5.4.0",
+    "typescript": "^7.0.2",
     "vite": "^5.4.0"
   }
 }
