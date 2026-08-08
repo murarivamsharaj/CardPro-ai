@@ -1,0 +1,311 @@
+# CardPro Backend — Docker Compose
+# Orchestrates PostgreSQL 15 + Redis + all Spring Boot microservices
+# on a custom bridge network (cardpro-network).
+#
+# Usage (from repo root, after building the jars):
+#   docker compose -f BACKEND/docker-compose.yml up -d --build
+#
+# Every variable below has a sane default baked in, so the stack boots
+# without a .env file. Copy .env.example -> .env to override secrets.
+#
+# NOTE: Services reach each other and Postgres via internal Docker DNS
+# (e.g. http://discovery-service:8761/eureka/, jdbc:postgresql://cardpro-postgres:5432/...).
+
+name: cardpro-backend
+
+services:
+
+  # ------------------------------------------------------------- PostgreSQL 15
+  postgres:
+    image: postgres:15-alpine
+    container_name: cardpro-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      # One database per service; created on first boot by the init script.
+      POSTGRES_MULTIPLE_DATABASES: auth_db,card_db,lead_db,payment_db,cardpro_orders,product_db,user_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../DATABASE/scripts/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cardpro-network
+
+  # -------------------------------------------------------------------- Redis
+  # Required by auth-service (token blacklist), card-service and ai-service (cache).
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - cardpro-network
+
+  # ---------------------------------------------------------- Discovery (Eureka)
+  discovery-service:
+    build: ./discovery-service
+    restart: unless-stopped
+    ports:
+      - "8761:8761"
+    environment:
+      EUREKA_USERNAME: eureka
+      EUREKA_PASSWORD: eureka123
+    healthcheck:
+      test: ["CMD", "wget", "-q", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - cardpro-network
+
+  # -------------------------------------------------------------------- Gateway
+  gateway-service:
+    build: ./gateway-service
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    depends_on:
+      discovery-service:
+        condition: service_healthy
+    environment:
+      EUREKA_USERNAME: eureka
+      EUREKA_PASSWORD: eureka123
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
+    networks:
+      - cardpro-network
+
+  # ----------------------------------------------------------------------- Auth
+  auth-service:
+    build: ./auth-service
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    environment:
+      # application.yml hardcodes localhost for the DB URL, so override via Spring props.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://cardpro-postgres:5432/auth_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      EUREKA_USERNAME: eureka
+      EUREKA_PASSWORD: eureka123
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
+      # instance.hostname is localhost + prefer-ip-address=false in application.yml;
+      # override so other containers can resolve this instance.
+      EUREKA_INSTANCE_HOSTNAME: auth-service
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
+    networks:
+      - cardpro-network
+
+  # ----------------------------------------------------------------------- Card
+  card-service:
+    build: ./card-service
+    restart: unless-stopped
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    environment:
+      CARD_DB_HOST: cardpro-postgres
+      CARD_DB_PORT: 5432
+      CARD_DB_NAME: card_db
+      CARD_DB_USERNAME: postgres
+      CARD_DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      EUREKA_USERNAME: eureka
+      EUREKA_PASSWORD: eureka123
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: card-service
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
+    networks:
+      - cardpro-network
+
+  # ----------------------------------------------------------------------- User
+  user-service:
+    build: ./user-service
+    restart: unless-stopped
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://cardpro-postgres:5432/user_db
+      DB_USERNAME: postgres
+      # Password is hardcoded in application.yml -> override via Spring property.
+      SPRING_DATASOURCE_PASSWORD: postgres
+      EUREKA_USERNAME: eureka
+      EUREKA_PASSWORD: eureka123
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
+    networks:
+      - cardpro-network
+
+  # ----------------------------------------------------------------------- Lead
+  lead-service:
+    build: ./lead-service
+    restart: unless-stopped
+    ports:
+      - "8084:8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    environment:
+      LEAD_DB_HOST: cardpro-postgres
+      LEAD_DB_PORT: 5432
+      LEAD_DB_NAME: lead_db
+      LEAD_DB_USERNAME: postgres
+      LEAD_DB_PASSWORD: postgres
+      EUREKA_USERNAME: eureka
+      EUREKA_PASSWORD: eureka123
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
+    networks:
+      - cardpro-network
+
+  # -------------------------------------------------------------------- Product
+  product-service:
+    build: ./product-service
+    restart: unless-stopped
+    ports:
+      - "8085:8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://cardpro-postgres:5432/product_db
+      DB_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      EUREKA_USERNAME: eureka
+      EUREKA_PASSWORD: eureka123
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: product-service
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
+    networks:
+      - cardpro-network
+
+  # ---------------------------------------------------------------------- Order
+  order-service:
+    build: ./order-service
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    environment:
+      ORDER_DB_HOST: cardpro-postgres
+      ORDER_DB_PORT: 5432
+      ORDER_DB_NAME: cardpro_orders
+      ORDER_DB_USERNAME: postgres
+      ORDER_DB_PASSWORD: postgres
+      EUREKA_USERNAME: eureka
+      EUREKA_PASSWORD: eureka123
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
+    networks:
+      - cardpro-network
+
+  # ------------------------------------------------------------------------ AI
+  ai-service:
+    build: ./ai-service
+    restart: unless-stopped
+    ports:
+      - "8087:8087"
+    depends_on:
+      redis:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      EUREKA_USERNAME: eureka
+      EUREKA_PASSWORD: eureka123
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-dummy-openai-key}
+      REMOVEBG_API_KEY: ${REMOVEBG_API_KEY:-dummy-removebg-key}
+      REPLICATE_API_KEY: ${REPLICATE_API_KEY:-dummy-replicate-key}
+    networks:
+      - cardpro-network
+
+  # -------------------------------------------------------------------- Payment
+  payment-service:
+    build: ./payment-service
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      discovery-service:
+        condition: service_healthy
+    environment:
+      PAYMENT_DB_HOST: cardpro-postgres
+      PAYMENT_DB_PORT: 5432
+      PAYMENT_DB_NAME: payment_db
+      PAYMENT_DB_USERNAME: postgres
+      PAYMENT_DB_PASSWORD: postgres
+      EUREKA_USERNAME: eureka
+      EUREKA_PASSWORD: eureka123
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
+      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-dummy-razorpay-id}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-dummy-razorpay-secret}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-dummy-webhook-secret}
+    networks:
+      - cardpro-network
+
+# ------------------------------------------------------------------- Networks
+networks:
+  cardpro-network:
+    driver: bridge
+
+# -------------------------------------------------------------------- Volumes
+volumes:
+  postgres-data:
