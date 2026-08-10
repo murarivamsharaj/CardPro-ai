@@ -1,9 +1,14 @@
 <div align="center">
   <img src="https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white" alt="Java 21"/>
   <img src="https://img.shields.io/badge/Spring_Boot-3-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white" alt="Spring Boot 3"/>
+  <img src="https://img.shields.io/badge/Spring_Cloud-2023.0-6DB33F?style=for-the-badge&logo=spring&logoColor=white" alt="Spring Cloud"/>
   <img src="https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React 18"/>
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/>
+  <img src="https://img.shields.io/badge/Vite-5-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite"/>
+  <img src="https://img.shields.io/badge/Tailwind_CSS-3-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" alt="Tailwind CSS"/>
   <img src="https://img.shields.io/badge/PostgreSQL-15-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL 15"/>
   <img src="https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white" alt="Redis 7"/>
+  <img src="https://img.shields.io/badge/RabbitMQ-3-FF6600?style=for-the-badge&logo=rabbitmq&logoColor=white" alt="RabbitMQ"/>
   <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker"/>
   <br/>
   <img src="https://img.shields.io/badge/Microservices-Spring_Cloud-6DB33F?style=flat-square" alt="Microservices"/>
@@ -29,19 +34,19 @@
 
 - [Project Description](#-project-description)
 - [Architecture](#-architecture)
+  - [Core Components](#-core-components)
+  - [Microservices Overview](#-microservices-overview)
+  - [Event-Driven Messaging (RabbitMQ)](#-event-driven-messaging-rabbitmq)
 - [Features](#-features)
-- [Microservices](#-microservices)
 - [Technology Stack](#-technology-stack)
 - [Folder Structure](#-folder-structure)
 - [Getting Started](#-getting-started)
-- [Prerequisites](#-prerequisites)
-- [Installation](#-installation)
-- [Running Backend](#-running-backend)
-- [Running Frontend](#-running-frontend)
+- [Running the Backend](#-running-the-backend)
+- [Running the Frontend](#-running-the-frontend)
 - [Docker](#-docker)
 - [API Documentation](#-api-documentation)
 - [Future Scope](#-future-scope)
-- [Contributors](#-contributors)
+- [Contributing](#-contributing)
 - [License](#-license)
 
 ---
@@ -49,6 +54,8 @@
 ## 📖 Project Description
 
 **CardPro AI** is a high-performance **micro-SaaS** platform that revolutionizes professional networking by replacing traditional business cards with intelligent, AI-powered digital profiles that actively generate leads.
+
+Built as a **production-grade, distributed microservices application**, CardPro AI is decomposed into independently deployable Spring Boot services that communicate over REST (synchronous), Redis (caching / rate limiting), and RabbitMQ (asynchronous events). Every service owns its own PostgreSQL database, registers with a Eureka discovery server, and is reached exclusively through a Spring Cloud Gateway edge.
 
 While competitors offer static digital card links behind expensive monthly subscriptions, CardPro AI disrupts the market using a **freemium + microtransaction model** — the core software is completely free. Revenue is generated through high-value, one-time microtransactions:
 
@@ -78,14 +85,15 @@ Detailed documentation is available in the [DOCS](./DOCS) directory:
 | Document | Description |
 |---|---|
 | [📄 SRS v2.0](./DOCS/SRS_CardPro_AI_v2.0.md) | Complete Software Requirements Specification |
-| [🏗️ Architecture v1.0](./DOCS/CardPro_AI_Microservices_Architecture_v1.0.md) | Microservices architecture design document |
+| [🏗️ Architecture v1.0](./DOCS/CardPro_AI_Microservices_Architecture_v1.0.md) | Microservices architecture design document (per-service deep dive) |
 | [📁 Project Structure](./DOCS/CardPro_AI_Complete_Project_Folder_Structure.md) | Complete project folder structure |
+| [🔧 Backend Runbook](./BACKEND/RUNBOOK.md) | Build & startup order for the backend |
 
 ---
 
 ## 🏗️ Architecture
 
-The platform follows a **microservices architecture** using Spring Cloud, with each service owning its data and scaling independently.
+The platform follows a **microservices architecture** using Spring Cloud, with each service owning its data and scaling independently. All external traffic enters through a single gateway, which routes to services discovered dynamically via Eureka.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -105,6 +113,7 @@ The platform follows a **microservices architecture** using Spring Cloud, with e
 ┌────────────────────────────┼────────────────────────────────────────┐
 │              SPRING CLOUD GATEWAY (Port 8765)                       │
 │          JWT Validation | Rate Limiting | Route Routing             │
+│                  (discovers services via Eureka)                    │
 ├────────────────────────────┼────────────────────────────────────────┤
 │                    │                   │              │             │
 │              ┌─────┴─────┐     ┌───────┴──────┐   ┌───┴───────┐     │
@@ -112,18 +121,131 @@ The platform follows a **microservices architecture** using Spring Cloud, with e
 │              │ (8081)    │     │  (8082)      │   │ (8083)    │     │
 │              └─────┬─────┘     └───────┬──────┘   └────┬──────┘     │
 │                    │                   │               │            │
-│              ┌─────┴─────┐     ┌───────┴──────┐        │            │
-│              │  AI Svc   │     │ Payment Svc  │        │            │
-│              │  (8084)   │     │  (8085)      │        │            │
-│              └─────┬─────┘     └───────┬──────┘        │            │
-│                    │                   │               │            │
+│              ┌─────┴─────┐     ┌───────┴──────┐   ┌────┴─────┐      │
+│              │  AI Svc   │     │ Payment Svc  │   │ Order Svc│      │
+│              │  (8084)   │     │  (8085)      │   │ (8086)   │      │
+│              └─────┬─────┘     └───────┬──────┘   └────┬─────┘      │
+│                    │                   │  ▲             │            │
+│                    │                   │  │ RabbitMQ    │ publish    │
+│                    │                   │  └──◀──────────┘ events     │
 ├────────────────────┼───────────────────┼───────────────┼────────────┤
 │                    ▼                   ▼               ▼            │
-│              ┌──────────────────────────────────────────────┐       │
-│              │     PostgreSQL  |  Redis  |  Eureka          │       │
-│              └──────────────────────────────────────────────┘       │
+│        ┌──────────────────────────────────────────────────────┐     │
+│        │  PostgreSQL (per-service DBs) | Redis | RabbitMQ     │     │
+│        │  Eureka (service registry)                           │     │
+│        └──────────────────────────────────────────────────────┘     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
+
+### 🔍 Core Components
+
+#### 🧭 Eureka Discovery Server (`discovery-service`, :8761)
+
+The service registry at the heart of the platform. Every microservice registers itself with Eureka on startup and sends heartbeats to maintain its presence. The gateway and inter-service Feign clients resolve service locations dynamically instead of hardcoding IP addresses, so instances can scale up/down without configuration changes.
+
+- **Responsibilities:** registration, heartbeat monitoring, lease expiry (30s), instance lookup for load-balanced routing
+- **State:** stateless (in-memory registry, no database)
+- **Dashboard:** `http://localhost:8761` (Basic auth: `eureka` / `eureka123`)
+- **Health:** `http://localhost:8761/actuator/health`
+
+#### 🚪 Spring Cloud Gateway (`gateway-service`, :8765)
+
+The **single entry point** for all external traffic — the only service exposed to the public internet. It routes requests to downstream services using `lb://` URIs resolved through Eureka.
+
+- **JWT validation at the edge** — validates tokens for protected routes, extracts `userId` / `email` / `roles`, and injects them as headers to downstream services
+- **Rate limiting** — Redis-backed `RequestRateLimiter` per IP for public endpoints (auth, public profile views)
+- **CORS & correlation IDs** — allows the React frontend origin; injects `X-Correlation-Id` for distributed tracing
+- **Webhook passthrough** — Razorpay webhooks bypass JWT (validated by signature in payment-service)
+
+#### 🔐 Auth Service (`auth-service`, :8081)
+
+Central identity and access control for the platform.
+
+- User registration (unique email, BCrypt password hashing) and login
+- JWT access-token (24h) + refresh-token (30d) issuance
+- **Token blacklisting** in Redis on logout
+- **Internal API** (`/api/v1/auth/internal/**`) protected by `INTERNAL_API_KEY`, used by other services to validate tokens and fetch user details
+- Owns the `users` table in `auth_db` (Flyway-managed)
+
+#### 🪪 Card Service (`card-service`, :8082)
+
+The most traffic-intensive service — it serves read-heavy public profile views plus authenticated CRUD.
+
+- Card profile CRUD with **JSONB** content (bio, skills, services, portfolio, testimonials, gallery, social links)
+- **Redis cache-aside** pattern for public profile reads (`profile:{slug}`) with graceful cache-miss fallback
+- Unique slug management, async view counters, template management (incl. premium template unlocking)
+- Owns `card_profiles` in `card_db`; internal endpoints for lead/payment services
+
+#### 🐇 RabbitMQ (Async Messaging)
+
+RabbitMQ decouples order and payment processing so services remain independently scalable. `order-service` publishes domain events; `payment-service` consumes them asynchronously (Spring AMQP).
+
+- **Exchange:** direct exchange (`order.exchange`) with a durable `order.created` queue
+- **Flow:** order created → `OrderCreatedEvent` published → payment-service consumes → Razorpay order created → webhook verification → fulfillment (unlock template / refill lead credits)
+- **Management UI:** `http://localhost:15672` (user: `cardpro` / pass: `cardpro`) when running the backend stack
+
+#### 🗄️ PostgreSQL 15
+
+One database **per service** — a strict data-ownership boundary enforced by the architecture.
+
+| Database | Owned by |
+|---|---|
+| `auth_db` | auth-service (`users`) |
+| `card_db` | card-service (`card_profiles`) |
+| `lead_db` | lead-service (`leads`) |
+| `payment_db` | payment-service (transactions) |
+| `cardpro_orders` | order-service (orders) |
+| `user_db`, `product_db` | user-service, product-service (catalog stack) |
+
+All databases are created automatically on first boot by [`DATABASE/scripts/init-multiple-databases.sh`](./DATABASE/scripts/init-multiple-databases.sh); schema migrations are managed with **Flyway** (`ddl-auto: validate`).
+
+#### ⚡ Redis 7
+
+Shared, multi-purpose infrastructure layer:
+
+- **Caching** — cache-aside for public card profiles
+- **Rate limiting** — Redis-backed gateway rate limiter
+- **Token blacklist** — invalidated JWTs on logout (auth-service)
+- **Async events** — Redis Streams for view counters / AI follow-up pipeline
+
+### 🧩 Microservices Overview
+
+| Service | Port | Database | Responsibility |
+|---|---|---|---|
+| 🔍 **discovery-service** | `8761` | None | Eureka Service Registry |
+| 🚪 **gateway-service** | `8765` | Redis | Edge gateway — JWT, rate limiting, routing |
+| 🔐 **auth-service** | `8081` | `auth_db` | Registration, login, JWT issuance/blacklist |
+| 🪪 **card-service** | `8082` | `card_db` + Redis | Card profile CRUD, caching, public viewer |
+| 📋 **lead-service** | `8083` | `lead_db` | Lead capture, credit management, event publishing |
+| 🤖 **ai-service** | `8084` | None (stateless) | OpenAI bio gen, photo upscaling, follow-ups |
+| 💳 **payment-service** | `8085` | `payment_db` | Razorpay orders, webhook verification, RabbitMQ consumer |
+| 🛒 **order-service** | `8086` | `cardpro_orders` | Order lifecycle, RabbitMQ producer |
+
+**Supporting catalog services** (included in the backend stack, `BACKEND/docker-compose.yml`):
+
+| Service | Responsibility |
+|---|---|
+| 👤 **user-service** | User profile CRUD (`/api/users`) |
+| 📦 **product-service** | Product catalog CRUD (`/api/v1/products`) — consumed by order-service via OpenFeign |
+
+### 🔁 Event-Driven Messaging (RabbitMQ)
+
+```
+┌──────────────────────┐      publish       ┌──────────────────────────┐
+│     order-service    │  OrderCreatedEvent │        RabbitMQ          │
+│  (order lifecycle)   │ ─────────────────▶ │  order.exchange          │
+└──────────────────────┘                    │  └─▶ order.created queue │
+                                            └────────────┬─────────────┘
+                                                         │ consume (async)
+                                            ┌────────────▼─────────────┐
+                                            │     payment-service      │
+                                            │  create Razorpay order   │
+                                            │  verify webhook          │
+                                            │  fulfillment (unlock)    │
+                                            └──────────────────────────┘
+```
+
+This pattern gives **eventual consistency**: if payment-service is down, events remain queued and are processed when it recovers — no order is lost and no synchronous coupling is introduced.
 
 ### Key Architectural Decisions
 
@@ -132,10 +254,12 @@ The platform follows a **microservices architecture** using Spring Cloud, with e
 | **Service Discovery** | Eureka Server — all services register dynamically |
 | **API Gateway** | Spring Cloud Gateway — single entry point, JWT validation at edge |
 | **Authentication** | JWT tokens validated by Gateway; user info propagated via headers |
+| **Database per Service** | Each microservice owns its PostgreSQL schema — no cross-service queries |
 | **Caching** | Redis cache-aside pattern for public profile reads (90%+ hit ratio) |
 | **Inter-Service** | OpenFeign clients with internal API key authentication |
-| **Async Events** | Redis Streams for lead capture → AI follow-up pipeline |
-| **Database per Service** | Each microservice owns its PostgreSQL schema |
+| **Async Events** | RabbitMQ for order → payment; Redis Streams for lead → AI follow-up pipeline |
+| **Schema Management** | Flyway migrations with `ddl-auto: validate` |
+| **Observability** | Actuator health endpoints + Micrometer metrics (Prometheus/Grafana) |
 
 ---
 
@@ -176,30 +300,6 @@ The platform follows a **microservices architecture** using Spring Cloud, with e
 
 ---
 
-## 🧩 Microservices
-
-| Service | Port | Description | Database |
-|---|---|---|---|
-| 🔍 **discovery-service** | `8761` | Eureka Service Registry — all services register here | None |
-| 🚪 **gateway-service** | `8765` | Spring Cloud Gateway — JWT validation, rate limiting, routing | Redis |
-| 🔐 **auth-service** | `8081` | User registration, login, JWT token management | `auth_db` |
-| 🪪 **card-service** | `8082` | Card profile CRUD, Redis caching, public viewer | `card_db` + Redis |
-| 📋 **lead-service** | `8083` | Lead capture, credit management, event publishing | `lead_db` |
-| 🤖 **ai-service** | `8084` | OpenAI integration, photo upscaling, follow-up generation | None (stateless) |
-| 💳 **payment-service** | `8085` | Razorpay orders, webhook verification, fulfillment | `payment_db` |
-
-### Service Dependency Graph
-
-```
-gateway ───▶ auth ───▶ card ───▶ redis
-    │                  │
-    ├──▶ lead ────────▶ ai (async via Redis Streams)
-    │
-    └──▶ payment ───▶ card/lead (fulfillment on success)
-```
-
----
-
 ## 🛠️ Technology Stack
 
 ### Backend
@@ -208,15 +308,18 @@ gateway ───▶ auth ───▶ card ───▶ redis
 |---|---|
 | **Java 21** | Core language with records, pattern matching, virtual threads |
 | **Spring Boot 3.3** | Production-grade microservices framework |
-| **Spring Cloud Gateway** | API Gateway with reactive routing |
+| **Spring Cloud 2023.0.2** | Service discovery, gateway, load-balanced clients |
+| **Spring Cloud Gateway** | Reactive API Gateway with Eureka-based routing |
 | **Spring Security 6** | JWT authentication, role-based authorization |
 | **Spring Data JPA** | ORM with Hibernate 6 |
+| **Spring AMQP (RabbitMQ)** | Asynchronous event-driven messaging (order → payment) |
 | **PostgreSQL 15** | Primary database with JSONB support |
 | **Redis 7** | Caching, rate limiting, token blacklist, async events |
-| **Flyway** | Database migrations |
+| **Flyway** | Versioned database migrations |
 | **OpenFeign** | Declarative HTTP clients for inter-service calls |
 | **Resilience4j** | Circuit breaker for external AI API calls |
 | **Razorpay SDK** | Payment gateway integration |
+| **springdoc OpenAPI** | Swagger UI / OpenAPI docs per service |
 | **Lombok** | Boilerplate reduction |
 | **Micrometer** | Metrics and monitoring (Prometheus) |
 
@@ -225,13 +328,15 @@ gateway ───▶ auth ───▶ card ───▶ redis
 | Technology | Purpose |
 |---|---|
 | **React 18** | UI framework with hooks and suspense |
-| **TypeScript** | Type-safe JavaScript |
-| **Vite 5** | Fast build tool and HMR |
+| **TypeScript 5** | Type-safe JavaScript |
+| **Vite 5** | Fast build tool and HMR dev server |
 | **Tailwind CSS 3** | Utility-first styling |
-| **Zustand** | Lightweight state management |
+| **Redux Toolkit + Zustand** | Predictable state management |
 | **React Router 6** | Client-side routing |
 | **React Hook Form** | Performant form management |
 | **Axios** | HTTP client with interceptors |
+| **Recharts** | Analytics dashboard charts |
+| **react-hot-toast** | Toast notifications |
 | **qrcode.react** | QR code generation |
 | **vcard-creator** | vCard (.vcf) file creation |
 
@@ -242,7 +347,7 @@ gateway ───▶ auth ───▶ card ───▶ redis
 | **Docker & Compose** | Containerization and local orchestration |
 | **GitHub Actions** | CI/CD pipelines |
 | **Prometheus + Grafana** | Monitoring and alerting |
-| **Nginx** | Reverse proxy and SSL termination |
+| **Nginx** | Reverse proxy and SSL termination (frontend container) |
 
 ---
 
@@ -252,29 +357,46 @@ gateway ───▶ auth ───▶ card ───▶ redis
 cardpro-ai/
 │
 ├── .github/                        # CI/CD workflows, issue/PR templates
-├── architecture/                   # Architecture documentation
-├── BACKEND/                        # All 7 microservices
-│   ├── discovery-service/          # Eureka Server
-│   ├── gateway-service/            # API Gateway
-│   ├── auth-service/               # Authentication
-│   ├── card-service/               # Card Profiles
-│   ├── lead-service/               # Lead Capture
-│   ├── ai-service/                 # AI Processing
-│   ├── payment-service/            # Payments
+├── architecture/                   # Architecture documentation & diagrams
+├── BACKEND/                        # Spring Boot microservices (parent POM)
+│   ├── discovery-service/          # Eureka Server (8761)
+│   ├── gateway-service/            # Spring Cloud Gateway (8765)
+│   ├── auth-service/               # Authentication & JWT (8081)
+│   ├── card-service/               # Card Profiles (8082)
+│   ├── lead-service/               # Lead Capture (8083)
+│   ├── ai-service/                 # AI Integrations (8084)
+│   ├── payment-service/            # Razorpay Payments (8085)
+│   ├── order-service/              # Orders + RabbitMQ producer (8086)
+│   ├── user-service/               # User profiles (catalog stack)
+│   ├── product-service/            # Product catalog (catalog stack)
+│   ├── docker-compose.yml          # Backend-only stack (incl. RabbitMQ)
+│   ├── RUNBOOK.md                  # Build & run order
 │   └── pom.xml                     # Parent POM
 │
-├── FRONTEND/                       # React + Vite + TypeScript
-│   └── src/
-│       ├── components/             # UI components
-│       ├── pages/                  # Route pages
-│       ├── services/               # API service layer
-│       ├── store/                  # Zustand state
-│       └── utils/                  # vCard, QR, formatters
+├── FRONTEND/                       # React + TypeScript + Vite + Tailwind
+│   ├── src/
+│   │   ├── api/                    # Axios instance & interceptors
+│   │   ├── components/             # UI components (common/, dashboard/)
+│   │   ├── context/                # React context providers
+│   │   ├── hooks/                  # Custom hooks
+│   │   ├── layouts/                # Layout components
+│   │   ├── pages/                  # Route pages (admin, auth, dashboard, public)
+│   │   ├── routes/                 # Router configuration & guards
+│   │   ├── services/               # API service layer
+│   │   ├── store/                  # Redux / Zustand state
+│   │   ├── styles/                 # Global styles & Tailwind setup
+│   │   ├── types/                  # Shared TypeScript types
+│   │   └── utils/                  # vCard, QR, formatters
+│   ├── package.json
+│   ├── tailwind.config.js
+│   └── vite.config.ts              # Dev server :5173, proxies /api → :8765
 │
-├── DATABASE/                       # SQL schemas, migrations, seeds
-├── DOCKER/                         # Docker configs, Nginx, monitoring
-├── DOCS/                           # SRS, Architecture docs
-└── POSTMAN/                        # API collections & environments
+├── DATABASE/                       # SQL schemas, migrations, seeds, init scripts
+├── DOCKER/                         # Docker configs, Nginx, monitoring, prod
+├── DOCS/                           # SRS, Architecture, Folder-structure docs
+├── POSTMAN/                        # API collections & environments
+├── docker-compose.yml              # Full-stack quick start (root)
+└── .env.example                    # Environment variable template
 ```
 
 ### Microservice Package Structure (Example: auth-service)
@@ -297,6 +419,8 @@ auth-service/
     └── exception/       # GlobalExceptionHandler, AuthException
 ```
 
+Every service follows the same layered convention: `controller → service → repository → entity`, with `config`, `security`, `dto`, and `exception` packages, Flyway migrations in `src/main/resources/db/migration`, and its own `Dockerfile`.
+
 ---
 
 ## 🚀 Getting Started
@@ -305,108 +429,143 @@ auth-service/
 
 | Tool | Version | Installation |
 |---|---|---|
-| Java JDK | 21+ | [Download](https://adoptium.net/) |
-| Maven | 3.9+ | [Download](https://maven.apache.org/download.cgi) |
+| Docker & Docker Compose | 24+ | [Download](https://docs.docker.com/get-docker/) |
 | Node.js | 20+ | [Download](https://nodejs.org/) |
-| Docker | 24+ | [Download](https://docs.docker.com/get-docker/) |
-| PostgreSQL | 15+ | [Download](https://www.postgresql.org/download/) |
-| Redis | 7+ | [Download](https://redis.io/download/) |
+| Java JDK *(optional, for local Maven runs)* | 21+ | [Download](https://adoptium.net/) |
+| Maven *(optional, for local Maven runs)* | 3.9+ | [Download](https://maven.apache.org/download.cgi) |
 
-### Quick Start with Docker
+> The fastest path requires **only Docker** for the backend and **Node.js** for the frontend dev server. PostgreSQL, Redis, and RabbitMQ run as containers — no local installs needed.
+
+### Quick Start
+
+#### 1️⃣ Configure environment variables
 
 ```bash
-# 1. Clone the repository
+# Clone the repository
 git clone https://github.com/murarivamsharaj/CardPro-ai.git
 cd cardpro-ai
 
-# 2. Configure environment variables
-cp .env.example .env
-# Edit .env with your API keys (OpenAI, Razorpay, etc.)
-
-# 3. Start all services
-docker compose up -d
-
-# 4. Verify services are running
-docker compose ps
-
-# 5. Access the application
-# Frontend: http://localhost:3000
-# API Gateway: http://localhost:8765
-# Eureka Dashboard: http://localhost:8761
-```
-
-### Manual Installation
-
-#### 1️⃣ Database Setup
-
-```bash
-# Create all databases
-createdb auth_db
-createdb card_db
-createdb lead_db
-createdb payment_db
-```
-
-#### 2️⃣ Environment Configuration
-
-```bash
+# Create your .env from the template
 cp .env.example .env
 ```
 
-Edit `.env` with your configuration:
+Edit `.env` and set the secrets your stack needs:
 
 ```env
-# JWT
-JWT_SECRET=your-256-bit-secret-key
+# JWT (shared signing secret — all services)
+JWT_SECRET=your-256-bit-secret-key-here-change-in-production
 
-# Internal Auth
-INTERNAL_API_KEY=your-secure-internal-api-key
+# Internal Auth (inter-service API key)
+INTERNAL_API_KEY=change-this-to-a-secure-random-key
 
-# AI Services
+# AI Services (used by ai-service)
 OPENAI_API_KEY=sk-your-openai-key
 REMOVEBG_API_KEY=your-removebg-key
 REPLICATE_API_KEY=your-replicate-key
 
-# Payments
+# Payments (used by payment-service)
 RAZORPAY_KEY_ID=rzp_live_your_key
 RAZORPAY_KEY_SECRET=your_razorpay_secret
 RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
+
+# Eureka dashboard credentials
+EUREKA_USERNAME=eureka
+EUREKA_PASSWORD=eureka123
 ```
+
+> Every variable has a sensible default baked into the compose files, so the stack boots even before you set real keys — you'll just get placeholder values for OpenAI/Razorpay until you add your own.
+
+#### 2️⃣ Start the backend with Docker Compose
+
+```bash
+# Build and start everything in the background
+docker compose up -d
+
+# Watch the services come up
+docker compose ps
+```
+
+Docker Compose handles the startup order for you (`depends_on` with healthchecks): PostgreSQL & Redis → Eureka → domain services → Gateway → Frontend container.
+
+#### 3️⃣ Run the frontend in development mode
+
+```bash
+cd FRONTEND
+npm install
+npm run dev
+```
+
+Open **http://localhost:5173** — the Vite dev server proxies `/api` requests to the API Gateway at `http://localhost:8765`, so the frontend talks to the full backend with zero extra configuration.
 
 ---
 
-## 🏃 Running Backend
+## 🏃 Running the Backend
 
-### Option 1: Run All Services with Maven
+### Option 1: Full Stack with Docker Compose (recommended)
+
+One command brings up PostgreSQL, Redis, all 8 core microservices, and the production frontend container:
 
 ```bash
-# Build all services
+docker compose up -d
+```
+
+| Component | URL |
+|---|---|
+| 🖥️ Frontend (container) | http://localhost:3000 |
+| 🚪 API Gateway | http://localhost:8765 |
+| 🧭 Eureka Dashboard | http://localhost:8761 |
+| 🗄️ PostgreSQL | localhost:5432 (`postgres` / `postgres`) |
+| ⚡ Redis | localhost:6379 |
+
+```bash
+# Follow logs for a specific service
+docker compose logs -f auth-service
+
+# Stop the stack
+docker compose down
+```
+
+### Option 2: Backend Stack with RabbitMQ + Catalog Services
+
+The root compose targets the 8 core services. For the **full backend topology** — including **RabbitMQ**, `user-service`, and `product-service` — use the backend compose file:
+
+```bash
+docker compose -f BACKEND/docker-compose.yml up -d --build
+```
+
+This additionally exposes:
+
+| Component | URL |
+|---|---|
+| 🐇 RabbitMQ (AMQP) | localhost:5672 |
+| 🐇 RabbitMQ Management UI | http://localhost:15672 (`cardpro` / `cardpro`) |
+| 👤 user-service | localhost:8083 |
+| 📦 product-service | localhost:8085 |
+
+### Option 3: Run with Maven (local development)
+
+```bash
+# 1. Build all services (from BACKEND/)
 cd BACKEND
 mvn clean package -DskipTests
 
-# Start Eureka first, then start other services in separate terminals
-# Terminal 1: Discovery Service
-cd discovery-service && mvn spring-boot:run
+# 2. Start infrastructure (PostgreSQL + Redis) — either Docker or local installs
+docker compose up -d postgres redis   # databases are created by the init script
 
-# Terminal 2: Gateway Service
+# 3. Start services in order, each in its own terminal
+cd discovery-service && mvn spring-boot:run   # Eureka FIRST (8761)
+cd auth-service     && mvn spring-boot:run    # 8081
+cd card-service     && mvn spring-boot:run    # 8082
+cd lead-service     && mvn spring-boot:run    # 8083
+cd ai-service       && mvn spring-boot:run    # 8084
+cd payment-service  && mvn spring-boot:run    # 8085
+cd order-service    && mvn spring-boot:run    # 8086
+
+# 4. Gateway LAST (8765) — it routes via Eureka and needs the registry populated
 cd gateway-service && mvn spring-boot:run
-
-# Terminal 3-7: Other services (auth, card, lead, ai, payment)
-cd auth-service && mvn spring-boot:run
 ```
 
-### Option 2: Run Individual Service (Development)
-
-```bash
-cd BACKEND/auth-service
-
-# With Maven
-mvn spring-boot:run -Dspring-boot.run.profiles=dev
-
-# Or with Java directly after building
-mvn clean package -DskipTests
-java -jar target/auth-service-*.jar
-```
+Export `JWT_SECRET` and `INTERNAL_API_KEY` in your shell (or set them in your IDE run configuration) before starting the services.
 
 ### Service Startup Order
 
@@ -417,19 +576,20 @@ java -jar target/auth-service-*.jar
 4. card-service        (Needs auth for token validation)
 5. lead-service        (Needs card for profile validation)
 6. payment-service     (Needs auth for user validation)
-7. ai-service          (Stateless, can start anytime)
+7. order-service       (Needs product catalog via Feign)
+8. ai-service          (Stateless, can start anytime)
 ```
 
-### Verify Backend is Running
+### Verify the Backend is Running
 
 ```bash
-# Check Eureka Dashboard
+# Eureka — all services should appear in the registry
 curl http://localhost:8761/actuator/health
 
-# Check Gateway
+# Gateway
 curl http://localhost:8765/actuator/health
 
-# Test Auth API
+# Test auth through the gateway
 curl -X POST http://localhost:8765/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"password123"}'
@@ -437,7 +597,9 @@ curl -X POST http://localhost:8765/api/v1/auth/register \
 
 ---
 
-## 🖥️ Running Frontend
+## 🖥️ Running the Frontend
+
+The frontend is a **React 18 + TypeScript + Vite 5 + Tailwind CSS 3** single-page application.
 
 ```bash
 cd FRONTEND
@@ -445,23 +607,27 @@ cd FRONTEND
 # Install dependencies
 npm install
 
-# Start development server
+# Start the development server (HMR enabled)
 npm run dev
+# → http://localhost:5173
+
+# Lint
+npm run lint
 
 # Build for production
 npm run build
 
-# Preview production build
+# Preview the production build locally
 npm run preview
 ```
 
-The frontend will be available at **http://localhost:5173** with hot reload enabled.
+**How the frontend reaches the backend:** the Vite dev server runs on `:5173` and proxies every `/api` request to the Spring Cloud Gateway at `http://localhost:8765` (`vite.config.ts`), so the browser never needs CORS configuration in development. In production, the frontend is served as a static build behind Nginx (port `3000` inside Docker).
 
 ---
 
 ## 🐳 Docker
 
-### Docker Compose Services
+### Useful Commands
 
 ```bash
 # Start all services
@@ -473,7 +639,7 @@ docker compose logs -f
 # Stop all services
 docker compose down
 
-# Rebuild specific service
+# Rebuild a specific service
 docker compose build auth-service
 docker compose up -d auth-service
 
@@ -488,7 +654,7 @@ docker compose up -d
 # Use production compose file
 docker compose -f DOCKER/prod/docker-compose.yml up -d
 
-# With monitoring stack
+# With monitoring stack (Prometheus + Grafana)
 docker compose -f DOCKER/prod/docker-compose.yml \
                -f DOCKER/monitoring/docker-compose.monitoring.yml up -d
 ```
@@ -597,15 +763,17 @@ Complete API documentation is available in the [Postman collection](./POSTMAN/co
 - **Senior Software Architect** — System design, architecture, microservices decomposition
 - **Chittipoola Murari** — Core Developer
 
-### How to Contribute
+---
+
+## 🤝 Contributing
+
+Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
-
-Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
 ---
 
