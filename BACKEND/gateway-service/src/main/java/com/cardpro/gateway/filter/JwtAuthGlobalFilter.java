@@ -5,6 +5,7 @@ import io.jsonwebtoken.Claims;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -33,7 +34,22 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        // 2. Token validation for other protected routes
+        // 2. COMPLETELY BYPASS JWT VALIDATION FOR THE PUBLIC CARD VIEWER.
+        //    GET /api/v1/cards/{slug} serves an unauthenticated public profile
+        //    (e.g. the frontend route /c/muari-card). Only the bare slug lookup
+        //    is public — /me and nested routes still require a token.
+        if (HttpMethod.GET.equals(request.getMethod())
+                && path.matches("^/api/v1/cards/[^/]+$")
+                && !path.endsWith("/me")) {
+            return chain.filter(exchange);
+        }
+
+        // 3. Let CORS preflight through without a token
+        if (HttpMethod.OPTIONS.equals(request.getMethod())) {
+            return chain.filter(exchange);
+        }
+
+        // 4. Token validation for other protected routes
         if (!request.getHeaders().containsKey("Authorization")) {
             return onError(exchange, "Missing Authorization Header", HttpStatus.UNAUTHORIZED);
         }

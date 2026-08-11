@@ -1,5 +1,14 @@
 import axios from 'axios';
 
+// Allow individual requests (e.g. the public card viewer) to opt out of the
+// global 401 → /login redirect. Public endpoints must not kick users to login.
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    /** When true, a 401 response is NOT redirected to /login. Public endpoints only. */
+    skipAuthRedirect?: boolean;
+  }
+}
+
 const api = axios.create({
   // Empty baseURL so it uses the Vite proxy configured in vite.config.ts
   baseURL: '',
@@ -25,7 +34,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    // Public endpoints (skipAuthRedirect) handle 401 themselves — never force login
+    if (error.response && error.response.status === 401 && !error.config?.skipAuthRedirect) {
       console.error('401 Unauthorized caught by interceptor. Redirecting to login...', error.config.url);
       localStorage.removeItem('token');
       // Use replace to prevent back-button loops

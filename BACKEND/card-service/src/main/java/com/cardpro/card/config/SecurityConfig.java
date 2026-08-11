@@ -34,7 +34,13 @@ public class SecurityConfig {
                         // 👇 CRUCIAL ADDITION: Allow CORS preflight requests from the browser
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Explicitly match GET for public slug viewing
+                        // Card owner endpoints — MUST be checked before the public {slug}
+                        // matcher below, otherwise "me" would match {slug} and become public.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/cards/me").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/cards/me").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/cards/me").authenticated()
+
+                        // Explicitly match GET for public slug viewing (no auth required)
                         .requestMatchers(HttpMethod.GET, "/api/v1/cards/{slug}").permitAll()
 
                         // Explicitly allow POST/GET for card management for authenticated users

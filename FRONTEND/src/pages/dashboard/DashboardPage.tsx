@@ -6,6 +6,7 @@ import { TiltCard } from '../../components/common/TiltCard';
 import { SkeletonCard } from '../../components/common/Skeleton';
 import { notifySuccess, notifyError } from '../../store/useNotificationStore';
 import { extractPrimaryColor, buildCardGradient, DEFAULT_CARD_GRADIENT, isLightColor } from '../../utils/colorUtils';
+import { ROUTES } from '../../utils/constants';
 
 interface CardItem {
   id?: string;
@@ -156,7 +157,7 @@ function CardPreview({ card }: { card: CardItem }) {
   }, [avatar]);
 
   const copyLink = async () => {
-    const url = `${window.location.origin}/c/${card.slug}`;
+    const url = `${window.location.origin}${ROUTES.PUBLIC_CARD(card.slug || '')}`;
     try {
       await navigator.clipboard.writeText(url);
       notifySuccess('Link copied', 'Your card link is on the clipboard');

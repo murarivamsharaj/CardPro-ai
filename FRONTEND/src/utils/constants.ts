@@ -50,6 +50,8 @@ export const ROUTES = {
   STORE: '/dashboard/store',
   SETTINGS: '/dashboard/settings',
   ADMIN: '/admin',
+  /** Public, no-auth digital card viewer. */
+  PUBLIC_CARD: (slug: string) => `/c/${slug}`,
 } as const;
 
 export const API_ENDPOINTS = {

@@ -10,6 +10,7 @@ import DashboardPage from './pages/dashboard/DashboardPage';
 import AnalyticsPage from './pages/dashboard/AnalyticsPage';
 import CreateCardPage from './pages/dashboard/CreateCardPage';
 import LeadsPage from './pages/dashboard/LeadsPage';
+import PublicCardViewer from './pages/public/PublicCardViewer';
 import { DynamicIsland } from './components/common/DynamicIsland';
 import { ROUTES } from './utils/constants';
 
@@ -20,7 +21,11 @@ export default function App() {
         {/* ── Public Routes ── */}
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
         <Route path={ROUTES.SIGNUP} element={<SignupPage />} />
-        
+
+        {/* Public digital card viewer — intentionally outside any auth guard so
+            anyone with the link can view the profile without logging in. */}
+        <Route path="/c/:slug" element={<PublicCardViewer />} />
+
         {/* Alias: If you type /register, it safely redirects to your actual signup route */}
         <Route path="/register" element={<Navigate to={ROUTES.SIGNUP} replace />} />
 
