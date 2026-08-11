@@ -6,26 +6,24 @@ spring:
     name: gateway-service
   cloud:
     gateway:
-      server:
-        webflux:
-          # Global CORS Configuration
-          globalcors:
-            cors-configurations:
-              '[/**]':
-                allowed-origins:
-                  - "http://localhost:5173"
-                  - "http://localhost:3000"
-                allowed-methods:
-                  - GET
-                  - POST
-                  - PUT
-                  - DELETE
-                  - OPTIONS
-                allowed-headers: "*"
-                allow-credentials: true
+      # Global CORS Configuration
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins:
+              - "http://localhost:5173"
+              - "http://localhost:3000"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowed-headers: "*"
+            allow-credentials: true
 
-          # Route Definitions
-          routes:
+      # Route Definitions
+      routes:
             - id: auth-service
               uri: lb://auth-service
               predicates:

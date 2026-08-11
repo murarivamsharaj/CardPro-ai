@@ -1,183 +1,39 @@
-version: '3.8'
+# CardPro AI — Full-Stack Docker Compose (repo root)
+#
+# ⚠️ This file is a thin wrapper. All backend service definitions (ports,
+#    env, healthchecks, networks, volumes) live in the CANONICAL file:
+#
+#        BACKEND/docker-compose.yml
+#
+#    This file includes it and additionally defines the `frontend` service
+#    (nginx serving the built React app, proxying /api to the gateway).
+#
+#    Keep backend edits in BACKEND/docker-compose.yml ONLY, so the two files
+#    cannot drift out of sync. Run the backend alone with:
+#
+#        docker compose -f BACKEND/docker-compose.yml up -d --build
+#
+#    Run the full stack (backend + frontend) from the repo root with:
+#
+#        docker compose up -d --build
+
+# Same project as BACKEND/docker-compose.yml so this file is a superset
+# entry point to the SAME stack (backend containers + frontend), not a
+# parallel deployment that fights over host ports.
+name: cardpro-backend
+
+include:
+  - path: BACKEND/docker-compose.yml
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_MULTIPLE_DATABASES: auth_db,card_db,lead_db,payment_db,cardpro_orders
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-      - ./database/scripts/init-multiple-databases.sh:/docker-entrypoint-initdb.d/init.sh
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-
-  discovery-service:
-    build: ./BACKEND/discovery-service
-    ports:
-      - "8761:8761"
-    environment:
-      EUREKA_USERNAME: eureka
-      EUREKA_PASSWORD: eureka123
-    healthcheck:
-      test: ["CMD", "wget", "-q", "http://localhost:8761/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  gateway-service:
-    build: ./BACKEND/gateway-service
-    ports:
-      - "8765:8765"
-    depends_on:
-      discovery-service:
-        condition: service_healthy
-    environment:
-      JWT_SECRET: ${JWT_SECRET}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      EUREKA_USERNAME: eureka
-      EUREKA_PASSWORD: eureka123
-
-  auth-service:
-    build: ./BACKEND/auth-service
-    ports:
-      - "8081:8081"
-    depends_on:
-      - postgres
-      - redis
-      - discovery-service
-    environment:
-      AUTH_DB_HOST: postgres
-      AUTH_DB_PORT: 5432
-      AUTH_DB_NAME: auth_db
-      AUTH_DB_USERNAME: postgres
-      AUTH_DB_PASSWORD: postgres
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET}
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      EUREKA_USERNAME: eureka
-      EUREKA_PASSWORD: eureka123
-
-  card-service:
-    build: ./BACKEND/card-service
-    ports:
-      - "8082:8082"
-    depends_on:
-      - postgres
-      - redis
-      - auth-service
-    environment:
-      CARD_DB_HOST: postgres
-      CARD_DB_PORT: 5432
-      CARD_DB_NAME: card_db
-      CARD_DB_USERNAME: postgres
-      CARD_DB_PASSWORD: postgres
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET}
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      EUREKA_USERNAME: eureka
-      EUREKA_PASSWORD: eureka123
-
-  lead-service:
-    build: ./BACKEND/lead-service
-    ports:
-      - "8083:8083"
-    depends_on:
-      - postgres
-      - card-service
-    environment:
-      LEAD_DB_HOST: postgres
-      LEAD_DB_PORT: 5432
-      LEAD_DB_NAME: lead_db
-      LEAD_DB_USERNAME: postgres
-      LEAD_DB_PASSWORD: postgres
-      JWT_SECRET: ${JWT_SECRET}
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      EUREKA_USERNAME: eureka
-      EUREKA_PASSWORD: eureka123
-
-  ai-service:
-    build: ./BACKEND/ai-service
-    ports:
-      - "8084:8084"
-    depends_on:
-      - redis
-      - lead-service
-    environment:
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET}
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      REMOVEBG_API_KEY: ${REMOVEBG_API_KEY}
-      REPLICATE_API_KEY: ${REPLICATE_API_KEY}
-      EUREKA_USERNAME: eureka
-      EUREKA_PASSWORD: eureka123
-
-  payment-service:
-    build: ./BACKEND/payment-service
-    ports:
-      - "8085:8085"
-    depends_on:
-      - postgres
-      - auth-service
-    environment:
-      PAYMENT_DB_HOST: postgres
-      PAYMENT_DB_PORT: 5432
-      PAYMENT_DB_NAME: payment_db
-      PAYMENT_DB_USERNAME: postgres
-      PAYMENT_DB_PASSWORD: postgres
-      JWT_SECRET: ${JWT_SECRET}
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
-      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
-      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET}
-      EUREKA_USERNAME: eureka
-      EUREKA_PASSWORD: eureka123
-
-  order-service:
-    build: ./BACKEND/order-service
-    ports:
-      - "8086:8086"
-    depends_on:
-      - postgres
-      - discovery-service
-    environment:
-      ORDER_DB_HOST: postgres
-      ORDER_DB_PORT: 5432
-      ORDER_DB_NAME: cardpro_orders
-      ORDER_DB_USERNAME: postgres
-      ORDER_DB_PASSWORD: postgres
-      JWT_SECRET: ${JWT_SECRET}
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
-      EUREKA_USERNAME: eureka
-      EUREKA_PASSWORD: eureka123
-
+  # ------------------------------------------------------------------ Frontend
   frontend:
     build: ./FRONTEND
+    restart: unless-stopped
     ports:
       - "3000:80"
     depends_on:
       - gateway-service
-
-volumes:
-  postgres-data:
+    networks:
+      # cardpro-network is defined by the included BACKEND/docker-compose.yml
+      - cardpro-network
