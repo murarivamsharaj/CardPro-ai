@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: payment-service
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:cardpro}
+    password: ${RABBITMQ_PASSWORD:cardpro}
 
   datasource:
     url: jdbc:postgresql://${PAYMENT_DB_HOST:localhost}:${PAYMENT_DB_PORT:5432}/${PAYMENT_DB_NAME:payment_db}

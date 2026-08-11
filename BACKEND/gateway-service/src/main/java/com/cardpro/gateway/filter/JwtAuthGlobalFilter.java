@@ -1,5 +1,7 @@
 package com.cardpro.gateway.filter;
 
+import com.cardpro.gateway.util.JwtUtil;
+import io.jsonwebtoken.Claims;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -10,8 +12,16 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 @Component
 public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
+
+    private final JwtUtil jwtUtil;
+
+    public JwtAuthGlobalFilter(JwtUtil jwtUtil) {
+        this.jwtUtil = jwtUtil;
+    }
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -33,7 +43,30 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
             return onError(exchange, "Invalid Authorization Header", HttpStatus.UNAUTHORIZED);
         }
 
-        return chain.filter(exchange);
+        String token = authHeader.substring(7);
+
+        // 3. Validate the JWT and extract the user identity so downstream services
+        //    (e.g. analytics, leads) can resolve the caller via X-User-Id.
+        Claims claims;
+        try {
+            claims = jwtUtil.validateToken(token);
+        } catch (Exception e) {
+            return onError(exchange, "Invalid or expired JWT token", HttpStatus.UNAUTHORIZED);
+        }
+
+        ServerHttpRequest mutatedRequest = request.mutate()
+                .header("X-User-Id", claims.getSubject())
+                .header("X-User-Email", claims.get("email", String.class))
+                .header("X-User-Roles", String.join(",", rolesFrom(claims)))
+                .build();
+
+        return chain.filter(exchange.mutate().request(mutatedRequest).build());
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> rolesFrom(Claims claims) {
+        List<String> roles = claims.get("roles", List.class);
+        return roles != null ? roles : List.of();
     }
 
     private Mono<Void> onError(ServerWebExchange exchange, String err, HttpStatus httpStatus) {

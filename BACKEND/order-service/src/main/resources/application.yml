@@ -4,6 +4,11 @@ server:
 spring:
   application:
     name: order-service
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:cardpro}
+    password: ${RABBITMQ_PASSWORD:cardpro}
   datasource:
     url: jdbc:postgresql://${ORDER_DB_HOST:localhost}:${ORDER_DB_PORT:5432}/${ORDER_DB_NAME:cardpro_orders}
     username: ${ORDER_DB_USERNAME:postgres}

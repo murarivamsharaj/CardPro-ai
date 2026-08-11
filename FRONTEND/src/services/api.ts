@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  // Hardcoding the exact URL to guarantee it hits the Gateway correctly
-  baseURL: 'http://localhost:8765',
+  // Empty baseURL so it uses the Vite proxy configured in vite.config.ts
+  baseURL: '',
   headers: {
     'Content-Type': 'application/json',
   },

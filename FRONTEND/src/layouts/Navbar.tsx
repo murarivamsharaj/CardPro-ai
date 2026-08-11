@@ -16,11 +16,11 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-gray-200 bg-white/80 px-4 backdrop-blur-sm lg:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-white/10 bg-slate-900/50 px-4 backdrop-blur-xl lg:px-6">
       {/* Mobile menu button */}
       <button
         onClick={onMenuClick}
-        className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 lg:hidden"
+        className="rounded-lg p-2 text-white/60 transition-colors hover:bg-white/10 hover:text-white lg:hidden"
         aria-label="Toggle sidebar"
       >
         <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -36,14 +36,14 @@ export default function Navbar({ onMenuClick }: NavbarProps) {
         {/* Notification Bell with History Drawer */}
         <NotificationBell />
 
-        <span className="hidden text-sm text-gray-500 sm:block">
+        <span className="hidden text-sm text-white/50 sm:block">
           {user?.email}
         </span>
 
         {/* Logout button */}
         <button
           onClick={handleLogout}
-          className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5"
+          className="btn-secondary px-3 py-1.5 text-xs"
           title="Logout"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>

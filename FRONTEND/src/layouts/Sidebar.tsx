@@ -24,24 +24,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     <>
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-gray-900/50 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
           onClick={onClose}
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-white border-r border-gray-200 transition-transform duration-300 lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-white/10 bg-slate-900/70 backdrop-blur-2xl transition-transform duration-300 lg:static lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex h-16 items-center gap-3 px-6 border-b border-gray-100">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-600 font-bold text-white shadow-md shadow-primary-200">
+        <div className="flex h-16 items-center gap-3 border-b border-white/10 px-6">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-lg font-bold text-white shadow-lg shadow-fuchsia-900/40">
             C
           </div>
-          <span className="text-xl font-bold text-gray-900">CardPro AI</span>
+          <span className="text-xl font-bold tracking-tight text-white">CardPro AI</span>
         </div>
 
-        <nav className="flex-1 space-y-1 px-4 py-6 overflow-y-auto">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-4 py-6">
           {navItems.map((item) => {
             const isActive = location.pathname === item.to;
             return (
@@ -49,11 +49,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 key={item.label}
                 to={item.to}
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                }`}
+                className={`sidebar-link ${isActive ? 'sidebar-link-active' : ''}`}
               >
                 <item.icon className="h-5 w-5" />
                 {item.label}
@@ -63,19 +59,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         {user && (
-          <div className="border-t border-gray-100 p-4">
+          <div className="border-t border-white/10 p-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/50 to-fuchsia-500/50 text-sm font-semibold text-white">
                 {user.email?.charAt(0).toUpperCase()}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="truncate text-sm font-medium text-gray-900">{user.email}</p>
-                <p className="text-xs text-gray-500 capitalize">{user.role?.toLowerCase() || 'user'}</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-white">{user.email}</p>
+                <p className="text-xs capitalize text-white/40">{user.role?.toLowerCase() || 'user'}</p>
               </div>
             </div>
             <button
               onClick={logout}
-              className="mt-3 w-full flex items-center justify-center gap-2 rounded-lg border border-gray-200 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 py-2 text-xs font-medium text-white/70 transition-all duration-200 hover:bg-white/10 hover:text-white active:scale-[0.97] active:shadow-inner"
             >
               Sign Out
             </button>
@@ -130,7 +126,7 @@ function StoreIcon({ className }: { className?: string }) {
 function SettingsIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456c.54-.203 1.15.008 1.45.51l1.297 2.249c.27.468.17 1.05-.24 1.41l-.94.825c-.275.24-.39.6-.33.956.024.148.04.298.04.45 0 .152-.016.302-.04.45-.06.356.055.715.33.956l.94.825c.41.36.51.942.24 1.41l-1.297 2.248c-.3.502-.91.713-1.45.51l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.332.183-.582.495-.645.87l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456c-.54.203-1.15-.008-1.45-.51l-1.297-2.249c-.27-.468-.17-1.05.24-1.41l.94-.825c.275-.24.39-.6.33-.956-.024-.148-.04-.298-.04-.45 0-.152.016-.302.04-.45.06-.356-.055-.715-.33-.956l-.94-.825c-.41-.36-.51-.942-.24-1.41l1.297-2.248c.3-.502.91-.713 1.45-.51l1.217.456c.355.133.75.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.645-.87l.213-1.281z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456c.54-.203 1.15.008 1.45.51l1.297 2.249c.27.468.17 1.05-.24 1.41l-.94.825c-.275.24-.39.6-.33.956.024.148.04.298.04.45 0 .152-.016.302-.04.45-.06.356.055.715.33.956l.94.825c.41.36.51.942.24 1.41l-1.297 2.248c-.3.502-.91.713-1.45.51l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.332.183-.582.495-.645.87l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456c-.54.203-1.15.008-1.45.51l-1.297-2.249c-.27-.468-.17-1.05.24-1.41l.94-.825c.275-.24.39-.6.33-.956-.024-.148-.04-.298-.04-.45 0-.152.016-.302.04-.45.06-.356.055-.715.33-.956l.94-.825c.41-.36.51-.942.24-1.41l1.297-2.248c.3-.502.91-.713 1.45-.51l1.217.456c.355.133.75.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.645-.87l.213-1.281z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   );

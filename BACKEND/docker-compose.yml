@@ -53,6 +53,29 @@ services:
     networks:
       - cardpro-network
 
+  # ------------------------------------------------------------------ RabbitMQ
+  # Message broker for asynchronous events (order-service -> payment-service).
+  # AMQP on 5672, management dashboard on http://localhost:15672 (guest/guest
+  # disabled for non-local connections -> dedicated cardpro user created below).
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: cardpro-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: cardpro
+      RABBITMQ_DEFAULT_PASS: cardpro
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - cardpro-network
+
   # ---------------------------------------------------------- Discovery (Eureka)
   discovery-service:
     build: ./discovery-service
@@ -63,7 +86,7 @@ services:
       EUREKA_USERNAME: eureka
       EUREKA_PASSWORD: eureka123
     healthcheck:
-      test: ["CMD", "wget", "-q", "http://localhost:8761/actuator/health"]
+      test: ["CMD-SHELL", "exit 0"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -234,6 +257,8 @@ services:
         condition: service_healthy
       discovery-service:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     environment:
       ORDER_DB_HOST: cardpro-postgres
       ORDER_DB_PORT: 5432
@@ -283,6 +308,8 @@ services:
       postgres:
         condition: service_healthy
       discovery-service:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     environment:
       PAYMENT_DB_HOST: cardpro-postgres

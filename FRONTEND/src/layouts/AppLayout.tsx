@@ -2,17 +2,21 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
+import { BackgroundFX } from '../components/common/BackgroundFX';
 
 /**
  * Main application layout with a responsive sidebar and top navbar.
  * - Desktop: sidebar is always visible
  * - Mobile: sidebar slides in from the left with an overlay
+ * Rendered over an ambient aurora backdrop with frosted glass panels.
  */
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden">
+      <BackgroundFX />
+
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 

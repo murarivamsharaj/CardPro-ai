@@ -2,60 +2,234 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────
+   CardPro AI — Premium Glass Design System
+   ───────────────────────────────────────────── */
+
 @layer base {
   html {
     scroll-behavior: smooth;
   }
 
   body {
-    @apply min-h-screen;
+    @apply min-h-screen bg-[#0b0a1f] text-white antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  }
+
+  ::selection {
+    @apply bg-fuchsia-500/40 text-white;
+  }
+
+  /* Slim, subtle scrollbars for the glass UI */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: rgba(255, 255, 255, 0.2);
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
   }
 }
 
 @layer components {
-  .auth-card {
-    @apply w-full max-w-md rounded-2xl bg-white p-8 shadow-xl shadow-gray-200/50 border border-gray-100;
+  /* ── Ambient aurora backdrop ─────────────────── */
+  .app-backdrop {
+    @apply fixed inset-0 -z-10 overflow-hidden bg-[#0b0a1f];
+  }
+  .app-backdrop::before,
+  .app-backdrop::after {
+    content: '';
+    @apply absolute rounded-full blur-[140px];
+    animation: aurora-drift 18s ease-in-out infinite alternate;
+  }
+  .app-backdrop::before {
+    @apply -left-40 -top-40 h-[34rem] w-[34rem] bg-violet-600/40;
+  }
+  .app-backdrop::after {
+    @apply -bottom-48 -right-40 h-[36rem] w-[36rem] bg-fuchsia-600/30;
+    animation-delay: -9s;
   }
 
+  /* ── Glass primitives ────────────────────────── */
+  .glass-panel {
+    @apply rounded-2xl border border-white/15 bg-white/10 shadow-xl shadow-black/20 backdrop-blur-xl;
+  }
+  .glass-card {
+    @apply rounded-2xl border border-white/15 bg-white/10 shadow-lg shadow-black/20 backdrop-blur-xl transition-all duration-300 hover:border-white/25 hover:bg-white/15;
+  }
+  .glass-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur-md;
+  }
+
+  /* ── Auth card ───────────────────────────────── */
+  .auth-card {
+    @apply glass-panel w-full max-w-md p-8;
+  }
+
+  /* ── Buttons (tactile micro-interactions) ────── */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-fuchsia-900/40 transition-all duration-200 hover:from-violet-500 hover:to-fuchsia-500 hover:shadow-fuchsia-800/40 focus:outline-none focus:ring-2 focus:ring-fuchsia-400/60 focus:ring-offset-2 focus:ring-offset-transparent active:scale-[0.97] active:shadow-inner disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-6 py-2.5 text-sm font-semibold text-white/90 shadow-lg shadow-black/10 backdrop-blur-md transition-all duration-200 hover:bg-white/20 hover:border-white/25 focus:outline-none focus:ring-2 focus:ring-white/40 active:scale-[0.97] active:shadow-inner disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-red-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-red-600/90 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-900/40 transition-all duration-200 hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/60 active:scale-[0.97] active:shadow-inner disabled:opacity-50;
   }
 
+  /* ── Inputs ──────────────────────────────────── */
   .input-field {
-    @apply block w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 transition-all duration-200 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20;
+    @apply block w-full rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-white/35 shadow-inner shadow-black/10 transition-all duration-200 focus:border-fuchsia-400/60 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-fuchsia-400/25;
   }
-
   .input-error {
-    @apply border-red-300 focus:border-red-500 focus:ring-red-500/20;
+    @apply border-red-400/60 focus:border-red-400 focus:ring-red-400/25;
   }
 
+  /* ── Cards / stats ───────────────────────────── */
   .card {
-    @apply rounded-xl border border-gray-100 bg-white p-6 shadow-sm shadow-gray-100/50;
+    @apply glass-card p-6;
   }
-
   .stat-card {
-    @apply rounded-xl border border-gray-100 bg-white p-6 shadow-sm shadow-gray-100/50 transition-all duration-200 hover:shadow-md hover:shadow-gray-200/50;
+    @apply glass-card p-6 hover:-translate-y-0.5;
   }
 
+  /* ── Sidebar ─────────────────────────────────── */
   .sidebar-link {
-    @apply flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium text-gray-600 transition-all duration-200 hover:bg-gray-100 hover:text-gray-900;
+    @apply flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium text-white/60 transition-all duration-200 hover:bg-white/10 hover:text-white active:scale-[0.98];
+  }
+  .sidebar-link-active {
+    @apply bg-gradient-to-r from-violet-600/40 to-fuchsia-600/30 text-white shadow-lg shadow-fuchsia-900/20 hover:bg-white/10 hover:text-white;
   }
 
-  .sidebar-link-active {
-    @apply bg-primary-50 text-primary-700 hover:bg-primary-50 hover:text-primary-700;
+  /* ── Skeleton loaders ────────────────────────── */
+  .skeleton {
+    @apply relative overflow-hidden rounded-xl bg-white/10;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+    animation: skeleton-shimmer 1.6s infinite;
+  }
+
+  /* ── Dynamic Island notification ─────────────── */
+  .island-pill {
+    @apply pointer-events-auto flex w-full items-center gap-3 rounded-full border border-white/25 bg-slate-900/85 px-5 py-3.5 shadow-2xl shadow-black/50 backdrop-blur-2xl;
+    animation: island-in 0.45s cubic-bezier(0.22, 1.4, 0.36, 1) both;
+  }
+
+  /* ── 3D tilt card ────────────────────────────── */
+  .tilt-card {
+    @apply relative overflow-hidden rounded-2xl border border-white/20 will-change-transform;
+    transform-style: preserve-3d;
+    transition: transform 0.15s ease-out, box-shadow 0.3s ease;
+  }
+  .tilt-card .tilt-glare {
+    @apply pointer-events-none absolute inset-0 z-20 rounded-2xl;
+    background: radial-gradient(circle at var(--glare-x, 50%) var(--glare-y, 50%), rgba(255, 255, 255, 0.35), transparent 55%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+  .tilt-card:hover .tilt-glare {
+    opacity: 1;
+  }
+  .tilt-card-inner {
+    transform: translateZ(40px);
+  }
+
+  /* ── AI photo-enhance scan overlay ───────────── */
+  .scan-overlay {
+    @apply pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-2xl border-2 border-fuchsia-400/70 bg-fuchsia-500/10;
+    backdrop-filter: saturate(1.4);
+  }
+  .scan-line {
+    @apply absolute left-0 h-0.5 w-full bg-gradient-to-r from-transparent via-fuchsia-300 to-transparent;
+    box-shadow: 0 0 18px 4px rgba(217, 70, 239, 0.55);
+    animation: scan-line 1.4s ease-in-out infinite;
+  }
+
+  /* ── Toggle switch ───────────────────────────── */
+  .toggle-track {
+    @apply relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border border-white/20 bg-white/10 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-fuchsia-400/50 focus:ring-offset-2 focus:ring-offset-transparent;
+  }
+  .toggle-track[data-on='true'] {
+    @apply bg-gradient-to-r from-violet-600 to-fuchsia-600;
+  }
+  .toggle-thumb {
+    @apply inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-300;
+  }
+  .toggle-track[data-on='true'] .toggle-thumb {
+    transform: translateX(20px);
   }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+}
+
+/* ── Keyframes ─────────────────────────────────── */
+@keyframes aurora-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(6rem, 3rem) scale(1.15);
+  }
+  100% {
+    transform: translate(-4rem, -2rem) scale(0.95);
+  }
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes island-in {
+  0% {
+    transform: translateY(-2.5rem) scale(0.85);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes island-out {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-2.5rem) scale(0.85);
+    opacity: 0;
+  }
+}
+
+@keyframes scan-line {
+  0% {
+    top: 4%;
+  }
+  50% {
+    top: 96%;
+  }
+  100% {
+    top: 4%;
   }
 }

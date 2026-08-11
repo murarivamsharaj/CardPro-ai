@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import api from '../../services/api'; 
+import api from '../../services/api';
+import { getErrorMessage } from '../../utils/api';
 
 interface FetchCardsParams {
   search?: string;
@@ -21,10 +22,7 @@ export const fetchUserCards = createAsyncThunk(
       const response = await api.get(`/api/v1/cards?search=${search}&page=${page}&size=${size}&sort=${sort}`);
       return response.data; 
     } catch (error: any) {
-      // Graceful fallback for fetching cards if backend is offline
-      console.warn('Backend cards endpoint unavailable. Using local mock storage fallback.');
-      const savedCards = JSON.parse(localStorage.getItem('mock_cards') || '[]');
-      return { content: savedCards, totalPages: 1 };
+      return rejectWithValue(getErrorMessage(error));
     }
   }
 );
@@ -36,26 +34,7 @@ export const createCard = createAsyncThunk(
       const response = await api.post('/api/v1/cards', cardData);
       return response.data;
     } catch (error: any) {
-      console.warn('Backend card creation endpoint unavailable (503). Using local mock creation for testing.');
-      const newMockCard = {
-        id: Date.now().toString(),
-        slug: cardData.slug,
-        templateId: cardData.templateId,
-        profileData: cardData.profileData,
-        status: 'Active',
-        createdAt: new Date().toISOString(),
-      };
-      
-      // Persist to localStorage so cards don't disappear on refresh
-      try {
-        const existingCards = JSON.parse(localStorage.getItem('mock_cards') || '[]');
-        const updatedCards = [newMockCard, ...existingCards];
-        localStorage.setItem('mock_cards', JSON.stringify(updatedCards));
-      } catch (e) {
-        console.error('Failed to save mock card to localStorage', e);
-      }
-
-      return newMockCard;
+      return rejectWithValue(getErrorMessage(error));
     }
   }
 );
@@ -67,7 +46,7 @@ export const fetchAnalytics = createAsyncThunk(
       const response = await api.get('/api/v1/analytics/summary');
       return response.data;
     } catch (error: any) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch analytics');
+      return rejectWithValue(getErrorMessage(error));
     }
   }
 );
@@ -92,7 +71,7 @@ const cardSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      // fetchUserCards cases with fallback
+      // fetchUserCards cases
       .addCase(fetchUserCards.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -102,31 +81,27 @@ const cardSlice = createSlice({
         state.cards = action.payload.content || [];
         state.totalPages = action.payload.totalPages || 0;
       })
-      .addCase(fetchUserCards.rejected, (state) => {
+      .addCase(fetchUserCards.rejected, (state, action) => {
         state.loading = false;
-        // Load persisted mock cards from localStorage when backend is offline
-        const savedCards = JSON.parse(localStorage.getItem('mock_cards') || '[]');
-        state.cards = savedCards;
-        state.totalPages = savedCards.length > 0 ? 1 : 0;
-        state.error = null;
+        state.error = action.payload as string;
       })
-      // createCard cases with graceful fallback
+      // createCard cases
       .addCase(createCard.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(createCard.fulfilled, (state, action) => {
         state.loading = false;
-        // Prevent duplicate entries if already added via localStorage
+        // Prevent duplicate entries
         if (!state.cards.some((c) => c.id === action.payload.id)) {
           state.cards.unshift(action.payload);
         }
       })
-      .addCase(createCard.rejected, (state) => {
+      .addCase(createCard.rejected, (state, action) => {
         state.loading = false;
-        state.error = null;
+        state.error = action.payload as string;
       })
-      // fetchAnalytics cases with dynamic fallback based on actual created cards
+      // fetchAnalytics cases
       .addCase(fetchAnalytics.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -135,32 +110,17 @@ const cardSlice = createSlice({
         state.loading = false;
         state.analytics = action.payload;
       })
-      .addCase(fetchAnalytics.rejected, (state) => {
+      .addCase(fetchAnalytics.rejected, (state, action) => {
         state.loading = false;
-        
-        // Dynamically calculate metrics based on actual mock cards in localStorage
-        const savedCards = JSON.parse(localStorage.getItem('mock_cards') || '[]');
-        const cardCount = savedCards.length;
-
+        state.error = action.payload as string;
         state.analytics = {
-          totalViews: cardCount > 0 ? cardCount * 24 : 0,
-          uniqueVisitors: cardCount > 0 ? cardCount * 18 : 0,
-          totalLeads: cardCount > 0 ? cardCount * 3 : 0,
-          clickThroughRate: cardCount > 0 ? 6.5 : 0.0,
-          viewsByDate: cardCount > 0 ? {
-            '2026-08-03': cardCount * 3,
-            '2026-08-04': cardCount * 5,
-            '2026-08-05': cardCount * 4,
-            '2026-08-06': cardCount * 7,
-            '2026-08-07': cardCount * 5,
-          } : {},
-          clicksByLink: cardCount > 0 ? {
-            'Website': cardCount * 10,
-            'LinkedIn': cardCount * 8,
-            'Twitter': cardCount * 6,
-          } : {},
+          totalViews: 0,
+          uniqueVisitors: 0,
+          totalLeads: 0,
+          clickThroughRate: 0,
+          viewsByDate: {},
+          clicksByLink: {},
         };
-        state.error = null;
       });
   }
 });

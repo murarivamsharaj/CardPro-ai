@@ -14,7 +14,7 @@ public class AnalyticsController {
     private final AnalyticsService analyticsService;
 
     @GetMapping("/summary")
-    public ResponseEntity<AnalyticsResponse> getUserAnalytics(@RequestHeader("X-User-Id") Long userId) {
+    public ResponseEntity<AnalyticsResponse> getUserAnalytics(@RequestHeader("X-User-Id") String userId) {
         AnalyticsResponse response = analyticsService.getAnalyticsForUser(userId);
         return ResponseEntity.ok(response);
     }

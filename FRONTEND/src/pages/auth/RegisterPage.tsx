@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authService } from '../../services/authService';
+import { BackgroundFX } from '../../components/common/BackgroundFX';
 
 export const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -16,10 +17,8 @@ export const RegisterPage: React.FC = () => {
     setLoading(true);
 
     try {
-      // Calls the correct /api/v1/auth/register endpoint
       await authService.register({ email, password });
-      alert('Account created successfully! You can now log in.');
-      navigate('/login'); // Send them to login after registering
+      navigate('/login');
     } catch (err: any) {
       console.error('Registration error:', err);
       setError(err.response?.data?.message || 'Registration failed. Try again.');
@@ -29,59 +28,65 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800">Create Account</h1>
-          <p className="text-sm text-gray-500 mt-1">Register for CardPro AI</p>
+    <div className="relative flex min-h-screen items-center justify-center p-4">
+      <BackgroundFX />
+      <div className="auth-card">
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-2xl font-bold text-white shadow-xl shadow-fuchsia-900/50">
+            C
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">Create Account</h1>
+          <p className="mt-1 text-sm text-white/50">Register for CardPro AI</p>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 text-sm rounded">
+          <div className="mb-4 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200 backdrop-blur-sm">
             {error}
           </div>
         )}
 
         <form onSubmit={handleRegister} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Email Address</label>
+            <label className="mb-1.5 block text-sm font-medium text-white/70">Email Address</label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md p-2.5 focus:ring-blue-500 focus:border-blue-500"
+              className="input-field"
               placeholder="you@example.com"
+              autoComplete="email"
+              disabled={loading}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Password</label>
+            <label className="mb-1.5 block text-sm font-medium text-white/70">Password</label>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full border border-gray-300 rounded-md p-2.5 focus:ring-blue-500 focus:border-blue-500"
+              className="input-field"
               placeholder="••••••••"
+              autoComplete="new-password"
+              disabled={loading}
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className={`w-full text-white font-semibold py-2.5 rounded-md transition duration-200 ${
-              loading ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
-            }`}
+            className="btn-primary w-full"
           >
-            {loading ? 'Registering...' : 'Register'}
+            {loading ? 'Registering…' : 'Register'}
           </button>
         </form>
 
         <div className="mt-4 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-white/50">
             Already have an account?{' '}
-            <Link to="/login" className="text-blue-600 hover:underline">
+            <Link to="/login" className="font-semibold text-fuchsia-300 transition-colors hover:text-fuchsia-200">
               Sign in here
             </Link>
           </p>
@@ -90,3 +95,5 @@ export const RegisterPage: React.FC = () => {
     </div>
   );
 };
+
+export default RegisterPage;

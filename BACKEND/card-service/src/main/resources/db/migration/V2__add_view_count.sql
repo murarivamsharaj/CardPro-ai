@@ -1,0 +1,1 @@
+ALTER TABLE card_profiles ADD COLUMN view_count BIGINT DEFAULT 0;

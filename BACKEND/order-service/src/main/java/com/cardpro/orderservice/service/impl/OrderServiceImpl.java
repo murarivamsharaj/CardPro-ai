@@ -4,11 +4,13 @@ import com.cardpro.orderservice.client.ProductServiceClient;
 import com.cardpro.orderservice.dto.OrderRequest;
 import com.cardpro.orderservice.dto.OrderResponse;
 import com.cardpro.orderservice.dto.OrderStatusUpdateRequest;
+import com.cardpro.orderservice.dto.OrderCreatedEvent;
 import com.cardpro.orderservice.dto.ProductResponse;
 import com.cardpro.orderservice.entity.Order;
 import com.cardpro.orderservice.enums.OrderStatus;
 import com.cardpro.orderservice.exception.OrderNotFoundException;
 import com.cardpro.orderservice.exception.ProductUnavailableException;
+import com.cardpro.orderservice.producer.OrderEventPublisher;
 import com.cardpro.orderservice.repository.OrderRepository;
 import com.cardpro.orderservice.service.OrderService;
 import feign.FeignException;
@@ -34,6 +36,7 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
     private final ProductServiceClient productServiceClient;
+    private final OrderEventPublisher orderEventPublisher;
 
     @Override
     @Transactional
@@ -55,6 +58,9 @@ public class OrderServiceImpl implements OrderService {
 
         order = orderRepository.save(order);
         log.info("Order created successfully with id: {}", order.getId());
+
+        // Notify downstream services (e.g. payment-service) asynchronously.
+        orderEventPublisher.publishOrderCreated(mapToEvent(order));
 
         return mapToResponse(order);
     }
@@ -136,6 +142,24 @@ public class OrderServiceImpl implements OrderService {
             throw new ProductUnavailableException(productId,
                     "Product service is unavailable. Please try again later.");
         }
+    }
+
+    /**
+     * Maps an Order entity to the OrderCreatedEvent payload sent over RabbitMQ.
+     *
+     * @param order the entity to map
+     * @return the event DTO
+     */
+    private OrderCreatedEvent mapToEvent(Order order) {
+        return OrderCreatedEvent.builder()
+                .orderId(order.getId())
+                .userId(order.getUserId())
+                .productId(order.getProductId())
+                .quantity(order.getQuantity())
+                .totalAmount(order.getTotalAmount())
+                .status(order.getStatus() != null ? order.getStatus().name() : null)
+                .createdAt(order.getCreatedAt())
+                .build();
     }
 
     /**

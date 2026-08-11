@@ -41,6 +41,22 @@ spring:
               predicates:
                 - Path=/api/v1/products/**
 
+            # Analytics + file uploads are served by the card-service
+            - id: card-analytics
+              uri: lb://card-service
+              predicates:
+                - Path=/api/v1/analytics/**
+
+            - id: card-files
+              uri: lb://card-service
+              predicates:
+                - Path=/api/v1/files/**
+
+            - id: lead-service
+              uri: lb://lead-service
+              predicates:
+                - Path=/api/v1/leads/**
+
 app:
   jwt:
     secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970

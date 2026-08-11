@@ -8,7 +8,7 @@ import java.util.HashMap;
 @Service
 public class AnalyticsService {
 
-    public AnalyticsResponse getAnalyticsForUser(Long userId) {
+    public AnalyticsResponse getAnalyticsForUser(String userId) {
         // TODO: Replace with actual database queries and repository calls later
         return AnalyticsResponse.builder()
                 .totalViews(1250)
