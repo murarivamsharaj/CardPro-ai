@@ -126,7 +126,6 @@ services:
       discovery-service:
         condition: service_healthy
     environment:
-      # application.yml hardcodes localhost for the DB URL, so override via Spring props.
       SPRING_DATASOURCE_URL: jdbc:postgresql://cardpro-postgres:5432/auth_db
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
@@ -135,8 +134,6 @@ services:
       EUREKA_USERNAME: eureka
       EUREKA_PASSWORD: eureka123
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
-      # instance.hostname is localhost + prefer-ip-address=false in application.yml;
-      # override so other containers can resolve this instance.
       EUREKA_INSTANCE_HOSTNAME: auth-service
       JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
@@ -187,7 +184,6 @@ services:
     environment:
       DB_URL: jdbc:postgresql://cardpro-postgres:5432/user_db
       DB_USERNAME: postgres
-      # Password is hardcoded in application.yml -> override via Spring property.
       SPRING_DATASOURCE_PASSWORD: postgres
       EUREKA_USERNAME: eureka
       EUREKA_PASSWORD: eureka123
@@ -219,6 +215,9 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
       JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
+      # These will pull securely from your .env file!
+      GMAIL_USERNAME: ${GMAIL_USERNAME:-dummy-email@gmail.com}
+      GMAIL_APP_PASSWORD: ${GMAIL_APP_PASSWORD:-dummy-password}
     networks:
       - cardpro-network
 

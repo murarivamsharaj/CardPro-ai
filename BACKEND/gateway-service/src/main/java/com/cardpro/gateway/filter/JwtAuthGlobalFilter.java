@@ -44,12 +44,21 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        // 3. Let CORS preflight through without a token
+        // 3. COMPLETELY BYPASS JWT VALIDATION FOR PUBLIC LEAD CAPTURE.
+        //    POST /api/v1/leads is submitted by unauthenticated visitors through
+        //    the "Contact Me" form on the public card viewer — the lead is
+        //    attributed via the profileId in the request body, not the caller.
+        if (HttpMethod.POST.equals(request.getMethod())
+                && (path.equals("/api/v1/leads") || path.equals("/api/v1/leads/"))) {
+            return chain.filter(exchange);
+        }
+
+        // 4. Let CORS preflight through without a token
         if (HttpMethod.OPTIONS.equals(request.getMethod())) {
             return chain.filter(exchange);
         }
 
-        // 4. Token validation for other protected routes
+        // 5. Token validation for other protected routes
         if (!request.getHeaders().containsKey("Authorization")) {
             return onError(exchange, "Missing Authorization Header", HttpStatus.UNAUTHORIZED);
         }
@@ -61,7 +70,7 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
 
         String token = authHeader.substring(7);
 
-        // 3. Validate the JWT and extract the user identity so downstream services
+        // 6. Validate the JWT and extract the user identity so downstream services
         //    (e.g. analytics, leads) can resolve the caller via X-User-Id.
         Claims claims;
         try {

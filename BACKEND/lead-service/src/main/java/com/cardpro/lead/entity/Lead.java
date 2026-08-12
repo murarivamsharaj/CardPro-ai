@@ -24,8 +24,14 @@ public class Lead {
     @Column(name = "visitor_name", nullable = false, length = 150)
     private String visitorName;
 
-    @Column(name = "visitor_phone", nullable = false, length = 20)
+    @Column(name = "visitor_email", length = 150)
+    private String visitorEmail;
+
+    @Column(name = "visitor_phone", length = 20)
     private String visitorPhone;
+
+    @Column(name = "message", columnDefinition = "TEXT")
+    private String message;
 
     @Column(name = "ai_followup", columnDefinition = "TEXT")
     private String aiFollowup;

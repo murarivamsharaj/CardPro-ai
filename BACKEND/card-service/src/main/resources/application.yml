@@ -53,7 +53,7 @@ app:
   jwt:
     secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
   internal:
-    api-key: cardpro-secret-key
+    api-key: ${INTERNAL_API_KEY:cardpro-secret-key}
   cache:
     profile-ttl-seconds: 300
 

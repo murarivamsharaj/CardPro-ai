@@ -6,7 +6,9 @@ export interface Lead {
   id: string;
   profileId: string;
   visitorName: string;
+  visitorEmail?: string;
   visitorPhone: string;
+  message?: string;
   aiFollowup?: string;
   capturedAt?: string;
 }

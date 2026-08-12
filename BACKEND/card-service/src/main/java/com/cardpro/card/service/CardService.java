@@ -4,6 +4,7 @@ import com.cardpro.card.dto.request.CreateCardRequest;
 import com.cardpro.card.dto.request.UpdateCardRequest;
 import com.cardpro.card.dto.response.CardResponse;
 import com.cardpro.card.dto.response.PublicCardResponse;
+import com.cardpro.card.exception.CardNotFoundException;
 import com.cardpro.card.entity.CardProfile;
 import com.cardpro.card.repository.CardProfileRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -33,9 +34,10 @@ public class CardService {
         }
 
         CardProfile profile = cardProfileRepository.findBySlug(slug)
-                .orElseThrow(() -> new RuntimeException("Card profile not found"));
+                .orElseThrow(CardNotFoundException::new);
 
         PublicCardResponse response = PublicCardResponse.builder()
+                .id(profile.getId())
                 .slug(profile.getSlug())
                 .templateId(profile.getTemplateId())
                 .profileData(profile.getProfileData())
@@ -48,13 +50,13 @@ public class CardService {
 
     public CardResponse getCardByUserId(String userId) {
         CardProfile profile = cardProfileRepository.findByUserId(UUID.fromString(userId))
-                .orElseThrow(() -> new RuntimeException("Card profile not found"));
+                .orElseThrow(CardNotFoundException::new);
         return mapToResponse(profile);
     }
 
     public CardResponse getCardById(UUID profileId) {
         CardProfile profile = cardProfileRepository.findById(profileId)
-                .orElseThrow(() -> new RuntimeException("Card profile not found"));
+                .orElseThrow(CardNotFoundException::new);
         return mapToResponse(profile);
     }
 
@@ -84,7 +86,7 @@ public class CardService {
 
     public CardResponse updateCard(String userId, UpdateCardRequest request) {
         CardProfile profile = cardProfileRepository.findByUserId(UUID.fromString(userId))
-                .orElseThrow(() -> new RuntimeException("Card profile not found"));
+                .orElseThrow(CardNotFoundException::new);
 
         if (request.getSlug() != null) {
             slugService.validateSlug(request.getSlug());
@@ -107,7 +109,7 @@ public class CardService {
 
     public void deleteCard(String userId) {
         CardProfile profile = cardProfileRepository.findByUserId(UUID.fromString(userId))
-                .orElseThrow(() -> new RuntimeException("Card profile not found"));
+                .orElseThrow(CardNotFoundException::new);
 
         cardProfileRepository.delete(profile);
         cardCacheService.evictCache(profile.getSlug());
@@ -115,7 +117,7 @@ public class CardService {
 
     public void incrementViewCount(UUID profileId) {
         CardProfile profile = cardProfileRepository.findById(profileId)
-                .orElseThrow(() -> new RuntimeException("Card profile not found"));
+                .orElseThrow(CardNotFoundException::new);
 
         // Assuming your CardProfile entity now has a viewCount field
         profile.setViewCount(profile.getViewCount() + 1);

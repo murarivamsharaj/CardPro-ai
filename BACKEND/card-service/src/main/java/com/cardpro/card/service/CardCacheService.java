@@ -14,7 +14,10 @@ import java.time.Duration;
 @Slf4j
 public class CardCacheService {
 
-    private static final String CACHE_PREFIX = "card:profile:";
+    // Versioned prefix: bump the version whenever the cached DTO shape changes
+    // (e.g. adding `id` to PublicCardResponse) so stale entries written by an
+    // older build are ignored instead of served without the new fields.
+    private static final String CACHE_PREFIX = "card:profile:v2:";
 
     // Reads from application.yml, defaults to 300 if missing
     @Value("${app.cache.profile-ttl-seconds:300}")

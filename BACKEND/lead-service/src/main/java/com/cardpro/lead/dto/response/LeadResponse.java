@@ -14,7 +14,9 @@ public class LeadResponse {
     private UUID id;
     private UUID profileId;
     private String visitorName;
+    private String visitorEmail;
     private String visitorPhone;
+    private String message;
     private String aiFollowup;
     private LocalDateTime capturedAt;
 }

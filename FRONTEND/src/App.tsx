@@ -9,6 +9,7 @@ import { LoginPage } from './pages/auth/LoginPage';
 import DashboardPage from './pages/dashboard/DashboardPage';
 import AnalyticsPage from './pages/dashboard/AnalyticsPage';
 import CreateCardPage from './pages/dashboard/CreateCardPage';
+import MyCardsPage from './pages/dashboard/MyCardsPage';
 import LeadsPage from './pages/dashboard/LeadsPage';
 import PublicCardViewer from './pages/public/PublicCardViewer';
 import { DynamicIsland } from './components/common/DynamicIsland';
@@ -39,7 +40,8 @@ export default function App() {
           }
         >
           <Route index element={<DashboardPage />} />
-          <Route path="cards" element={<PlaceholderPage title="My Cards" />} />
+          <Route path="cards" element={<MyCardsPage />} />
+          <Route path="cards/new" element={<Navigate to="/dashboard/cards/create" replace />} />
           <Route path="cards/create" element={<CreateCardPage />} />
           <Route path="leads" element={<LeadsPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />

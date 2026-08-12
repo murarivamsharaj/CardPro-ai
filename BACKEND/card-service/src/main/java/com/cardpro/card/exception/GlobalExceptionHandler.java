@@ -43,4 +43,18 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
+
+    @ExceptionHandler(CardNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleCardNotFound(CardNotFoundException ex) {
+        Map<String, Object> errorDetail = new HashMap<>();
+        errorDetail.put("code", "CARD_NOT_FOUND");
+        errorDetail.put("message", ex.getMessage());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "error");
+        response.put("error", errorDetail);
+        response.put("timestamp", Instant.now().toString());
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
 }

@@ -15,8 +15,12 @@ public class CorsConfig {
     public CorsWebFilter corsWebFilter() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allow your React frontend
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174"));
+        // Allow the React frontend (Vite dev servers + any alternate ports)
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:5174",
+                "http://localhost:3000"
+        ));
 
         // Allow all standard HTTP methods, especially OPTIONS for preflight
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));

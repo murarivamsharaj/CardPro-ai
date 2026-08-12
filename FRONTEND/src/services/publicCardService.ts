@@ -5,6 +5,8 @@ import api from './api';
  * `profileData` is a JSON string — parse it with `parseProfileData`.
  */
 export interface PublicCardResponse {
+  /** Profile (card) UUID — used to attribute lead submissions to the card owner. */
+  id?: string | null;
   slug: string;
   templateId: string | null;
   profileData: string | null;
@@ -55,4 +57,25 @@ export function parseProfileData(profileData: string | null): PublicCardProfile 
   } catch {
     return {};
   }
+}
+
+/** Payload submitted by a visitor to the card owner (POST /api/v1/leads). */
+export interface SubmitLeadPayload {
+  profileId: string;
+  visitorName: string;
+  visitorEmail: string;
+  visitorPhone?: string;
+  message?: string;
+}
+
+/**
+ * Submits a visitor's contact info so it is attributed to the card owner.
+ *
+ * Like `fetchPublicCard`, this is safe for unauthenticated visitors — a 401 is
+ * returned to the caller instead of the global interceptor redirecting to /login.
+ */
+export async function submitLead(payload: SubmitLeadPayload): Promise<void> {
+  await api.post('/api/v1/leads', payload, {
+    skipAuthRedirect: true,
+  });
 }

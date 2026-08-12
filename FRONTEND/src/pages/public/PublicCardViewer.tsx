@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fetchPublicCard, parseProfileData, PublicCardProfile, PublicCardResponse } from '../../services/publicCardService';
+import {
+  fetchPublicCard,
+  parseProfileData,
+  submitLead,
+  PublicCardProfile,
+  PublicCardResponse,
+} from '../../services/publicCardService';
 
 type ViewState =
   | { status: 'loading' }
@@ -211,6 +217,9 @@ function CardContent({ card }: { card: PublicCardResponse }) {
       {/* Save contact (vCard) */}
       <SaveContactButton profile={profile} name={name} title={title} />
 
+      {/* Contact Me — lets visitors send their info to the card owner */}
+      <ContactMeForm profileId={card.id ?? null} />
+
       <p className="mt-2 text-center text-[11px] text-white/30">
         Powered by CardPro — {card.slug ? `cardpro.ai/c/${card.slug}` : ''}
       </p>
@@ -243,6 +252,177 @@ function SaveContactButton({ profile, name, title }: { profile: PublicCardProfil
       </svg>
       {saved ? 'Contact Saved!' : 'Save Contact'}
     </button>
+  );
+}
+
+/* ── Contact Me form ──────────────────────────────── */
+
+type ContactFormStatus = 'idle' | 'sending' | 'success' | 'error';
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function ContactMeForm({ profileId }: { profileId: string | null }) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState<ContactFormStatus>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const sending = status === 'sending';
+
+  function validate(): boolean {
+    const errors: Record<string, string> = {};
+    if (!name.trim()) errors.name = 'Please enter your name';
+    if (!email.trim()) errors.email = 'Please enter your email';
+    else if (!EMAIL_PATTERN.test(email)) errors.email = 'Please enter a valid email address';
+    if (!message.trim()) errors.message = 'Please enter a message';
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setStatus('idle');
+    setErrorMessage('');
+    if (!validate()) return;
+
+    if (!profileId) {
+      setStatus('error');
+      setErrorMessage("This card isn't accepting messages right now. Please try again later.");
+      return;
+    }
+
+    setStatus('sending');
+    try {
+      await submitLead({
+        profileId,
+        visitorName: name.trim(),
+        visitorEmail: email.trim(),
+        message: message.trim(),
+      });
+      // Clear the form so the visitor can send another message if they like.
+      setName('');
+      setEmail('');
+      setMessage('');
+      setFieldErrors({});
+      setStatus('success');
+    } catch {
+      setStatus('error');
+      setErrorMessage('Something went wrong sending your message. Please try again.');
+    }
+  }
+
+  return (
+    <div className="glass-panel p-5">
+      <div className="mb-4 flex items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-fuchsia-600 shadow-lg shadow-fuchsia-900/40">
+          <MailIcon className="h-5 w-5 text-white" />
+        </span>
+        <div>
+          <h2 className="text-base font-semibold text-white">Contact Me</h2>
+          <p className="text-xs text-white/50">Send a message — I'll get back to you soon.</p>
+        </div>
+      </div>
+
+      {status === 'success' && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200 backdrop-blur-sm">
+          <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Message sent! I'll get back to you soon.
+        </div>
+      )}
+
+      {status === 'error' && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200 backdrop-blur-sm">
+          <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+          {errorMessage}
+        </div>
+      )}
+
+      {!profileId && (
+        <p className="mb-4 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-200 backdrop-blur-sm">
+          This card isn't accepting messages right now. Please try again later.
+        </p>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <div>
+          <label htmlFor="contact-name" className="mb-1.5 block text-sm font-medium text-white/70">
+            Name
+          </label>
+          <input
+            id="contact-name"
+            type="text"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setStatus('idle');
+            }}
+            placeholder="Your name"
+            className={`input-field ${fieldErrors.name ? 'input-error' : ''}`}
+            autoComplete="name"
+            disabled={sending}
+          />
+          {fieldErrors.name && <p className="mt-1 text-xs text-rose-300">{fieldErrors.name}</p>}
+        </div>
+
+        <div>
+          <label htmlFor="contact-email" className="mb-1.5 block text-sm font-medium text-white/70">
+            Email
+          </label>
+          <input
+            id="contact-email"
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setStatus('idle');
+            }}
+            placeholder="you@example.com"
+            className={`input-field ${fieldErrors.email ? 'input-error' : ''}`}
+            autoComplete="email"
+            disabled={sending}
+          />
+          {fieldErrors.email && <p className="mt-1 text-xs text-rose-300">{fieldErrors.email}</p>}
+        </div>
+
+        <div>
+          <label htmlFor="contact-message" className="mb-1.5 block text-sm font-medium text-white/70">
+            Message
+          </label>
+          <textarea
+            id="contact-message"
+            value={message}
+            onChange={(e) => {
+              setMessage(e.target.value);
+              setStatus('idle');
+            }}
+            placeholder="What would you like to talk about?"
+            rows={4}
+            className={`input-field resize-none ${fieldErrors.message ? 'input-error' : ''}`}
+            disabled={sending}
+          />
+          {fieldErrors.message && <p className="mt-1 text-xs text-rose-300">{fieldErrors.message}</p>}
+        </div>
+
+        <button type="submit" className="btn-primary w-full" disabled={sending || !profileId}>
+          {sending ? (
+            <>
+              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+              Sending...
+            </>
+          ) : (
+            'Send Message'
+          )}
+        </button>
+      </form>
+    </div>
   );
 }
 

@@ -11,8 +11,20 @@ import java.util.UUID;
 public interface CardServiceClient {
 
     @GetMapping("/{profileId}")
-    Object getProfileById(
+    CardProfileResponse getProfileById(
         @PathVariable UUID profileId,
+        @RequestHeader("X-Internal-API-Key") String apiKey
+    );
+
+    /**
+     * Fetches the card(s) owned by the logged-in user so lead-service can scope
+     * lead queries. The {@code X-User-Id} header (injected by the gateway from
+     * the JWT on the original request) is forwarded to card-service, which
+     * resolves the owning card profile from it.
+     */
+    @GetMapping("/me")
+    CardProfileResponse getMyCard(
+        @RequestHeader("X-User-Id") String userId,
         @RequestHeader("X-Internal-API-Key") String apiKey
     );
 }

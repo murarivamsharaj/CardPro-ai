@@ -27,6 +27,60 @@ export const fetchUserCards = createAsyncThunk(
   }
 );
 
+/**
+ * Fetch the current user's own digital card(s) from GET /api/v1/cards/me.
+ * The backend models one card per user and returns a single object; it is
+ * normalized into an array so the grid UI stays uniform. A 404 means the
+ * user has no card yet — that is an empty library, not an error.
+ */
+export const fetchMyCards = createAsyncThunk(
+  'card/fetchMyCards',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/api/v1/cards/me');
+      const data = response.data;
+      const list = Array.isArray(data) ? data : [data];
+      return { content: list.filter(Boolean), totalPages: 1 };
+    } catch (error: any) {
+      if (error?.response?.status === 404) {
+        return { content: [], totalPages: 0 };
+      }
+      return rejectWithValue(getErrorMessage(error));
+    }
+  }
+);
+
+interface UpdateMyCardParams {
+  slug?: string;
+  templateId?: string;
+  profileData?: Record<string, any>;
+  isActive?: boolean;
+}
+
+export const updateMyCard = createAsyncThunk(
+  'card/updateMyCard',
+  async (cardData: UpdateMyCardParams, { rejectWithValue }) => {
+    try {
+      const response = await api.put('/api/v1/cards/me', cardData);
+      return response.data;
+    } catch (error: any) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  }
+);
+
+export const deleteMyCard = createAsyncThunk(
+  'card/deleteMyCard',
+  async (_, { rejectWithValue }) => {
+    try {
+      await api.delete('/api/v1/cards/me');
+      return true;
+    } catch (error: any) {
+      return rejectWithValue(getErrorMessage(error));
+    }
+  }
+);
+
 export const createCard = createAsyncThunk(
   'card/createCard',
   async (cardData: CreateCardParams, { rejectWithValue }) => {
@@ -82,6 +136,20 @@ const cardSlice = createSlice({
         state.totalPages = action.payload.totalPages || 0;
       })
       .addCase(fetchUserCards.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // fetchMyCards cases
+      .addCase(fetchMyCards.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchMyCards.fulfilled, (state, action) => {
+        state.loading = false;
+        state.cards = action.payload.content;
+        state.totalPages = action.payload.totalPages;
+      })
+      .addCase(fetchMyCards.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })

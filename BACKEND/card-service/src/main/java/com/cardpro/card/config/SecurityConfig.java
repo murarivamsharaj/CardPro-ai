@@ -34,6 +34,12 @@ public class SecurityConfig {
                         // 👇 CRUCIAL ADDITION: Allow CORS preflight requests from the browser
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
+                        // Internal routes — MUST be declared before the generic card matchers
+                        // below (e.g. GET /api/v1/cards/**), otherwise /api/v1/cards/internal/{id}
+                        // is captured by the authenticated rule first and inter-service Feign
+                        // calls (which carry no JWT, only X-Internal-API-Key) are rejected 403.
+                        .requestMatchers("/api/v1/cards/internal/**").permitAll()
+
                         // Card owner endpoints — MUST be checked before the public {slug}
                         // matcher below, otherwise "me" would match {slug} and become public.
                         .requestMatchers(HttpMethod.GET, "/api/v1/cards/me").authenticated()
@@ -46,9 +52,6 @@ public class SecurityConfig {
                         // Explicitly allow POST/GET for card management for authenticated users
                         .requestMatchers(HttpMethod.POST, "/api/v1/cards").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/cards/**").authenticated()
-
-                        // Internal routes
-                        .requestMatchers("/api/v1/cards/internal/**").permitAll()
 
                         // Admin routes
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
