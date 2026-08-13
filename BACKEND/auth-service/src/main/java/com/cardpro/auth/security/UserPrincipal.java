@@ -23,6 +23,7 @@ public class UserPrincipal implements UserDetails {
     private final String passwordHash;
     private final Role role;
     private final int leadCredits;
+    private final boolean userEnabled;
     private final Collection<? extends GrantedAuthority> authorities;
 
     public UserPrincipal(User user) {
@@ -31,6 +32,7 @@ public class UserPrincipal implements UserDetails {
         this.passwordHash = user.getPasswordHash();
         this.role = user.getRole();
         this.leadCredits = user.getLeadCredits();
+        this.userEnabled = user.isAccountActive();
         this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
     }
 
@@ -61,6 +63,6 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return userEnabled;
     }
 }

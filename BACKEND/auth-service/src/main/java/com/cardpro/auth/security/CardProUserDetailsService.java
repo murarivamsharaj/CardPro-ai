@@ -33,6 +33,7 @@ public class CardProUserDetailsService implements UserDetailsService {
 
     /**
      * Load user by ID (used by JWT authentication where we have userId from the token).
+     * Disabled (soft-deleted) users are rejected so their tokens cannot be used.
      */
     @Transactional(readOnly = true)
     public UserPrincipal loadUserById(java.util.UUID userId) {
@@ -40,6 +41,11 @@ public class CardProUserDetailsService implements UserDetailsService {
             .orElseThrow(() -> new UsernameNotFoundException(
                 "User not found with id: " + userId
             ));
+        if (!user.isAccountActive()) {
+            throw new UsernameNotFoundException(
+                "Account disabled for user id: " + userId
+            );
+        }
         return new UserPrincipal(user);
     }
 }

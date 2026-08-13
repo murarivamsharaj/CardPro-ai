@@ -233,3 +233,185 @@
     top: 4%;
   }
 }
+
+/* ─────────────────────────────────────────────
+   Light Theme (html[data-theme="light"])
+   ─────────────────────────────────────────────
+   These rules are intentionally UN-layered so they win over Tailwind's
+   layered utilities (plain CSS beats @layer rules) without !important.
+   The toggle lives in Settings and persists to localStorage (cardpro_theme).
+   ───────────────────────────────────────────── */
+
+html[data-theme='light'] body {
+  background-color: #eef1f7;
+  color: #0f172a;
+}
+
+html[data-theme='light'] .app-backdrop {
+  background-color: #eef1f7;
+}
+html[data-theme='light'] .app-backdrop::before {
+  background: rgba(139, 92, 246, 0.22);
+}
+html[data-theme='light'] .app-backdrop::after {
+  background: rgba(217, 70, 239, 0.16);
+}
+
+/* ── Text color mapping (white utilities → dark slate) ── */
+html[data-theme='light'] .text-white {
+  color: #0f172a;
+}
+html[data-theme='light'] .text-white\/80 {
+  color: rgba(15, 23, 42, 0.8);
+}
+html[data-theme='light'] .text-white\/70 {
+  color: rgba(15, 23, 42, 0.7);
+}
+html[data-theme='light'] .text-white\/60 {
+  color: rgba(15, 23, 42, 0.6);
+}
+html[data-theme='light'] .text-white\/50 {
+  color: rgba(15, 23, 42, 0.55);
+}
+html[data-theme='light'] .text-white\/40 {
+  color: rgba(15, 23, 42, 0.45);
+}
+html[data-theme='light'] .text-white\/35 {
+  color: rgba(15, 23, 42, 0.35);
+}
+html[data-theme='light'] .text-fuchsia-300 {
+  color: #c026d3;
+}
+html[data-theme='light'] .text-fuchsia-200 {
+  color: #a21caf;
+}
+html[data-theme='light'] .text-rose-300 {
+  color: #e11d48;
+}
+html[data-theme='light'] .text-rose-200 {
+  color: #be123c;
+}
+html[data-theme='light'] .text-emerald-300 {
+  color: #059669;
+}
+html[data-theme='light'] .text-black\/50,
+html[data-theme='light'] .text-black\/60,
+html[data-theme='light'] .text-black\/70 {
+  color: rgba(15, 23, 42, 0.6);
+}
+
+/* ── Glass surfaces ── */
+html[data-theme='light'] .glass-panel,
+html[data-theme='light'] .glass-card,
+html[data-theme='light'] .glass-chip {
+  background-color: rgba(255, 255, 255, 0.78);
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow: 0 10px 30px -12px rgba(15, 23, 42, 0.18);
+}
+html[data-theme='light'] .glass-card:hover {
+  background-color: rgba(255, 255, 255, 0.92);
+  border-color: rgba(15, 23, 42, 0.2);
+}
+
+html[data-theme='light'] .skeleton {
+  background-color: rgba(15, 23, 42, 0.08);
+}
+html[data-theme='light'] .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+}
+
+/* ── Inputs ── */
+html[data-theme='light'] .input-field {
+  background-color: rgba(255, 255, 255, 0.85);
+  border-color: rgba(15, 23, 42, 0.15);
+  color: #0f172a;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+html[data-theme='light'] .input-field::placeholder {
+  color: rgba(15, 23, 42, 0.35);
+}
+
+/* ── Buttons ── */
+html[data-theme='light'] .btn-secondary {
+  background-color: rgba(15, 23, 42, 0.05);
+  border-color: rgba(15, 23, 42, 0.15);
+  color: #0f172a;
+}
+html[data-theme='light'] .btn-secondary:hover {
+  background-color: rgba(15, 23, 42, 0.1);
+}
+
+/* ── Toggle (off state) ── */
+html[data-theme='light'] .toggle-track {
+  background-color: rgba(15, 23, 42, 0.12);
+  border-color: rgba(15, 23, 42, 0.2);
+}
+
+/* ── Sidebar / shell surfaces ── */
+html[data-theme='light'] aside {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+}
+html[data-theme='light'] .sidebar-link {
+  color: rgba(15, 23, 42, 0.6);
+}
+html[data-theme='light'] .sidebar-link:hover {
+  background-color: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+}
+html[data-theme='light'] .sidebar-link-active {
+  color: #0f172a;
+  background-image: linear-gradient(90deg, rgba(139, 92, 246, 0.18), rgba(217, 70, 239, 0.12));
+}
+html[data-theme='light'] .island-pill {
+  background-color: rgba(255, 255, 255, 0.95);
+  border-color: rgba(15, 23, 42, 0.12);
+  color: #0f172a;
+}
+html[data-theme='light'] .bg-slate-900\/70 {
+  background-color: rgba(255, 255, 255, 0.88);
+}
+html[data-theme='light'] .bg-slate-900\/85 {
+  background-color: rgba(255, 255, 255, 0.95);
+}
+html[data-theme='light'] .bg-slate-900\/90 {
+  background-color: rgba(255, 255, 255, 0.96);
+}
+
+/* ── Border & background utilities used on cards/rows ── */
+html[data-theme='light'] .border-white\/5 {
+  border-color: rgba(15, 23, 42, 0.06);
+}
+html[data-theme='light'] .border-white\/10 {
+  border-color: rgba(15, 23, 42, 0.1);
+}
+html[data-theme='light'] .border-white\/15 {
+  border-color: rgba(15, 23, 42, 0.14);
+}
+html[data-theme='light'] .border-white\/20 {
+  border-color: rgba(15, 23, 42, 0.18);
+}
+html[data-theme='light'] .border-white\/25 {
+  border-color: rgba(15, 23, 42, 0.22);
+}
+html[data-theme='light'] .bg-white\/5 {
+  background-color: rgba(15, 23, 42, 0.05);
+}
+html[data-theme='light'] .bg-white\/10 {
+  background-color: rgba(15, 23, 42, 0.06);
+}
+html[data-theme='light'] .bg-white\/15 {
+  background-color: rgba(15, 23, 42, 0.08);
+}
+html[data-theme='light'] .bg-white\/20 {
+  background-color: rgba(15, 23, 42, 0.1);
+}
+html[data-theme='light'] .hover\:bg-white\/10:hover {
+  background-color: rgba(15, 23, 42, 0.08);
+}
+html[data-theme='light'] .hover\:bg-white\/15:hover {
+  background-color: rgba(15, 23, 42, 0.12);
+}
+html[data-theme='light'] .hover\:bg-white\/20:hover {
+  background-color: rgba(15, 23, 42, 0.14);
+}

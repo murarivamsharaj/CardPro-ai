@@ -85,3 +85,14 @@ export const API_ENDPOINTS = {
 } as const;
 
 export const TOAST_DURATION = 4000;
+
+/**
+ * user-service is intentionally NOT routed through the gateway (gateway
+ * routing is stable/off-limits), so the browser calls it directly on its
+ * published host port. CORS on the service allows the dev (5173) and Docker
+ * (3000) frontends.
+ */
+export const USER_SERVICE_BASE_URL = 'http://localhost:8083/api';
+
+/** localStorage key for the Dark/Light theme preference. */
+export const THEME_STORAGE_KEY = 'cardpro_theme';

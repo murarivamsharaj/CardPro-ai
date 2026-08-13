@@ -77,6 +77,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/internal/**")
                         .hasRole("INTERNAL_SERVICE")
 
+                        // Admin command center — user management & platform config
+                        .requestMatchers("/api/v1/auth/admin/**")
+                        .hasRole("ADMIN")
+
                         // Everything else requires authentication
                         .anyRequest()
                         .authenticated()

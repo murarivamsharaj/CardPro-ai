@@ -11,6 +11,7 @@ import AnalyticsPage from './pages/dashboard/AnalyticsPage';
 import CreateCardPage from './pages/dashboard/CreateCardPage';
 import MyCardsPage from './pages/dashboard/MyCardsPage';
 import LeadsPage from './pages/dashboard/LeadsPage';
+import SettingsPage from './pages/dashboard/SettingsPage';
 import PublicCardViewer from './pages/public/PublicCardViewer';
 import { DynamicIsland } from './components/common/DynamicIsland';
 import { ROUTES } from './utils/constants';
@@ -46,7 +47,7 @@ export default function App() {
           <Route path="leads" element={<LeadsPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="store" element={<PlaceholderPage title="Store" />} />
-          <Route path="settings" element={<PlaceholderPage title="Settings" />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         {/* ── Admin Routes ── */}

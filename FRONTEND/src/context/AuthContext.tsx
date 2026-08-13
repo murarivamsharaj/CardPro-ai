@@ -36,7 +36,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
     } catch (err: any) {
-      const errorMsg = err.response?.data?.message || 'Invalid email or password';
+      const errorMsg =
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
+        'Invalid email or password';
       setError(errorMsg);
       throw err;
     } finally {
@@ -53,7 +56,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
     } catch (err: any) {
-      const errorMsg = err.response?.data?.message || 'Registration failed';
+      const errorMsg =
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
+        'Registration failed';
       setError(errorMsg);
       throw err;
     } finally {

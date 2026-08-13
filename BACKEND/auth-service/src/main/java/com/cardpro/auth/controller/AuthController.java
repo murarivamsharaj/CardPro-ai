@@ -1,5 +1,6 @@
 package com.cardpro.auth.controller;
 
+import com.cardpro.auth.dto.request.ChangePasswordRequest;
 import com.cardpro.auth.dto.request.LoginRequest;
 import com.cardpro.auth.dto.request.RefreshTokenRequest;
 import com.cardpro.auth.dto.request.RegisterRequest;
@@ -78,6 +79,33 @@ public class AuthController {
         log.debug("Refresh token request received");
         AuthResponse response = authService.refreshToken(request);
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Change the authenticated user's password.
+     *
+     * <p>Verifies the current password against the stored hash, hashes the new
+     * password with BCrypt, persists it, and revokes all refresh tokens so
+     * other sessions must re-authenticate.
+     *
+     * @param authentication Spring Security {@link Authentication} containing user principal
+     * @param request        {@link ChangePasswordRequest} with current + new password
+     * @return 204 No Content on success
+     */
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(
+            Authentication authentication,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal) {
+            authService.changePassword(
+                principal.getId(),
+                request.getCurrentPassword(),
+                request.getNewPassword()
+            );
+            log.info("Password changed for user: {}", principal.getEmail());
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
 
     /**

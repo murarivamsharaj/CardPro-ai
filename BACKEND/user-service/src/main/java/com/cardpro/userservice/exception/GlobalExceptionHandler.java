@@ -45,6 +45,18 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.NOT_FOUND, errorDetail);
     }
 
+    @ExceptionHandler(UserProfileNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleUserProfileNotFound(UserProfileNotFoundException ex) {
+        log.warn("Profile not found: {}", ex.getMessage());
+
+        Map<String, Object> errorDetail = new HashMap<>();
+        errorDetail.put("code", "USER_PROFILE_NOT_FOUND");
+        errorDetail.put("message", ex.getMessage());
+        errorDetail.put("details", Map.of("email", ex.getEmail()));
+
+        return buildErrorResponse(HttpStatus.NOT_FOUND, errorDetail);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
         log.debug("Validation failed: {}", ex.getMessage());

@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -15,4 +16,6 @@ public class UserResponse {
     private String email;
     private Role role;
     private Integer leadCredits;
+    private Boolean enabled;
+    private LocalDateTime createdAt;
 }

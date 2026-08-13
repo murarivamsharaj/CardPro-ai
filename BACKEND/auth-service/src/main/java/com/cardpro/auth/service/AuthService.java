@@ -7,7 +7,11 @@ import com.cardpro.auth.dto.response.AuthResponse;
 import com.cardpro.auth.dto.response.UserResponse;
 import com.cardpro.auth.entity.RefreshToken;
 import com.cardpro.auth.entity.User;
+import com.cardpro.auth.enums.Role;
+import com.cardpro.auth.exception.AccountDisabledException;
 import com.cardpro.auth.exception.InvalidCredentialsException;
+import com.cardpro.auth.exception.PasswordMismatchException;
+import com.cardpro.auth.exception.RegistrationDisabledException;
 import com.cardpro.auth.exception.TokenExpiredException;
 import com.cardpro.auth.exception.UserAlreadyExistsException;
 import com.cardpro.auth.repository.RefreshTokenRepository;
@@ -20,7 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -31,6 +37,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final RegistrationConfigService registrationConfigService;
 
     // ──────────────────────────────────────────────
     // Register
@@ -38,6 +45,13 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
+        // Global admin toggle: reject self-registration when disabled.
+        if (!registrationConfigService.isRegistrationEnabled()) {
+            throw new RegistrationDisabledException(
+                "Public registration is currently disabled by an administrator"
+            );
+        }
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new UserAlreadyExistsException("Email already registered");
         }
@@ -67,6 +81,12 @@ public class AuthService {
             throw new InvalidCredentialsException("Invalid email or password");
         }
 
+        if (!user.isAccountActive()) {
+            throw new AccountDisabledException(
+                "This account has been disabled. Contact an administrator."
+            );
+        }
+
         log.info("User logged in: {}", user.getEmail());
         return generateAuthResponse(user);
     }
@@ -83,7 +103,14 @@ public class AuthService {
         RefreshToken storedToken = refreshTokenRepository.findByToken(tokenValue)
             .orElseThrow(() -> new TokenExpiredException("Refresh token not found or has been revoked"));
 
-        // 2. Validate: not revoked, not expired
+        // 2. Validate: account still active (soft-deleted users cannot refresh)
+        if (!storedToken.getUser().isAccountActive()) {
+            throw new AccountDisabledException(
+                "This account has been disabled. Contact an administrator."
+            );
+        }
+
+        // 3. Validate: not revoked, not expired
         if (storedToken.isRevoked()) {
             // Token reuse detected — revoke all tokens for this user (security measure)
             User user = storedToken.getUser();
@@ -96,11 +123,11 @@ public class AuthService {
             throw new TokenExpiredException("Refresh token has expired. Please login again.");
         }
 
-        // 3. Rotate: revoke the used token
+        // 4. Rotate: revoke the used token
         storedToken.setRevoked(true);
         refreshTokenRepository.save(storedToken);
 
-        // 4. Issue new tokens
+        // 5. Issue new tokens
         User user = storedToken.getUser();
         log.debug("Refresh token rotated for user: {}", user.getEmail());
 
@@ -116,6 +143,75 @@ public class AuthService {
         UUID uuid = UUID.fromString(userId);
         int revoked = refreshTokenRepository.revokeAllUserTokens(uuid);
         log.info("User logged out: {} — revoked {} token(s)", userId, revoked);
+    }
+
+    // ──────────────────────────────────────────────
+    // Password Change
+    // ──────────────────────────────────────────────
+
+    /**
+     * Verifies the current password, hashes the new one, and persists it.
+     * All existing refresh tokens are revoked so other sessions must log in
+     * again with the new password.
+     */
+    @Transactional
+    public void changePassword(UUID userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new InvalidCredentialsException("User not found"));
+
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new PasswordMismatchException("Current password is incorrect");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        int revoked = refreshTokenRepository.revokeAllUserTokens(userId);
+        log.info("Password changed for user: {} - revoked {} refresh token(s)", user.getEmail(), revoked);
+    }
+
+    // ──────────────────────────────────────────────
+    // Admin: User Management
+    // ──────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List<UserResponse> getAllUsers() {
+        return userRepository.findAll().stream()
+            .map(this::mapToUserResponse)
+            .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public UserResponse updateUserRole(UUID userId, Role role) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new InvalidCredentialsException("User not found"));
+
+        user.setRole(role);
+        user = userRepository.save(user);
+        log.info("User {} role updated to {}", user.getEmail(), role);
+
+        return mapToUserResponse(user);
+    }
+
+    /**
+     * Soft-delete (disable) or re-enable an account. Disabled accounts cannot
+     * log in, refresh tokens, or authenticate against JWT-protected endpoints.
+     */
+    @Transactional
+    public UserResponse setUserEnabled(UUID userId, boolean enabled) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new InvalidCredentialsException("User not found"));
+
+        user.setEnabled(enabled);
+        user = userRepository.save(user);
+
+        // A disabled account must not keep using its refresh tokens.
+        if (!enabled) {
+            refreshTokenRepository.revokeAllUserTokens(userId);
+        }
+        log.info("User {} {}", user.getEmail(), enabled ? "re-enabled" : "disabled");
+
+        return mapToUserResponse(user);
     }
 
     // ──────────────────────────────────────────────
@@ -172,6 +268,8 @@ public class AuthService {
             .email(user.getEmail())
             .role(user.getRole())
             .leadCredits(user.getLeadCredits())
+            .enabled(user.getEnabled())
+            .createdAt(user.getCreatedAt())
             .build();
     }
 }

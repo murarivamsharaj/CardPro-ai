@@ -8,7 +8,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/user_db}
     username: ${DB_USERNAME:postgres}
-    password: murari
+    password: ${DB_PASSWORD:murari}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -20,6 +20,19 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+
+  # RabbitMQ (for publishing email-notification preference events)
+  # Defaults match the canonical cardpro stack (BACKEND/docker-compose.yml).
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:cardpro}
+    password: ${RABBITMQ_PASSWORD:cardpro}
+
+app:
+  jwt:
+    # Shared with auth-service so the same token validates everywhere
+    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
 
 eureka:
   client:

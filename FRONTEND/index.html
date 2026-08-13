@@ -5,6 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CardPro AI - Digital Visiting Cards</title>
+    <script>
+      // Apply the persisted theme before first paint to avoid a dark-mode flash.
+      (function () {
+        try {
+          if (localStorage.getItem('cardpro_theme') === 'light') {
+            document.documentElement.setAttribute('data-theme', 'light');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -18,6 +18,34 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(ApiException.class)
+    public ResponseEntity<Map<String, Object>> handleApiException(ApiException ex) {
+        Map<String, Object> errorDetail = new HashMap<>();
+        errorDetail.put("code", ex.getErrorCode());
+        errorDetail.put("message", ex.getMessage());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "error");
+        response.put("error", errorDetail);
+        response.put("timestamp", Instant.now().toString());
+
+        return ResponseEntity.status(ex.getHttpStatus()).body(response);
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
+        Map<String, Object> errorDetail = new HashMap<>();
+        errorDetail.put("code", "BAD_REQUEST");
+        errorDetail.put("message", ex.getMessage());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "error");
+        response.put("error", errorDetail);
+        response.put("timestamp", Instant.now().toString());
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ApiResponses(value = {
             @ApiResponse(responseCode = "400", description = "Validation Failed",
