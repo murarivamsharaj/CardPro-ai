@@ -92,6 +92,13 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!-- Razorpay Payments (CardPro Pro subscription) -->
+        <dependency>
+            <groupId>com.razorpay</groupId>
+            <artifactId>razorpay-java</artifactId>
+            <version>1.4.6</version>
+        </dependency>
+
         <!-- OpenAPI / Swagger UI for Spring Boot 3 -->
         <dependency>
             <groupId>org.springdoc</groupId>

@@ -14,9 +14,12 @@ import {
   getRegistrationConfig,
   setRegistrationConfig,
   getTotalCardCount,
+  createProOrder,
+  verifyProPayment,
   type UserProfile,
   type AdminUser,
 } from '../../services/settingsService';
+import { openRazorpayCheckout } from '../../services/razorpayService';
 
 type ThemeMode = 'dark' | 'light';
 
@@ -64,6 +67,7 @@ export const SettingsPage: React.FC = () => {
 
       <div className="space-y-6">
         <AppearanceSection />
+        <ProSection email={user?.email} />
         <ProfileSection email={user?.email} />
         <PasswordSection />
         <NotificationsSection email={user?.email} />
@@ -470,6 +474,186 @@ function NotificationsSection({ email }: { email?: string }) {
         />
       </div>
     </SectionCard>
+  );
+}
+
+/* ─────────────────────────── CardPro Pro ─────────────────────────── */
+
+const PRO_FEATURES = [
+  'Unlimited digital cards',
+  'AI-powered bios & photo upscaling',
+  'Lead capture with analytics',
+  'Priority email support',
+  'Exclusive PRO badge',
+];
+
+/**
+ * Razorpay-backed CardPro Pro upgrade card.
+ *
+ * Loads the real Pro status from user-service ({@code /users/me → pro}); a
+ * non-Pro user gets the ₹999 upgrade CTA, which creates a Razorpay order,
+ * opens the Checkout modal, and only flips the UI to PRO after the server has
+ * cryptographically verified the payment signature.
+ */
+function ProSection({ email }: { email?: string }) {
+  const { updateUser } = useAuth();
+  const [pro, setPro] = useState<boolean | null>(null);
+  const [checkingOut, setCheckingOut] = useState(false);
+
+  const refreshPro = useCallback(async () => {
+    if (!email) return;
+    try {
+      const profile = await getMyProfile();
+      setPro(profile.pro === true);
+    } catch {
+      // No profile record yet (first visit) — the free tier applies.
+      setPro(false);
+    }
+  }, [email]);
+
+  useEffect(() => {
+    refreshPro();
+  }, [refreshPro]);
+
+  const handleUpgrade = async () => {
+    if (checkingOut) return;
+    setCheckingOut(true);
+    try {
+      const order = await createProOrder();
+      await openRazorpayCheckout({
+        key: order.keyId,
+        amount: order.amount,
+        currency: order.currency,
+        orderId: order.orderId,
+        name: 'CardPro AI',
+        description: 'CardPro Pro — one-time ₹999',
+        email,
+        themeColor: '#7c3aed',
+        onSuccess: async (payment) => {
+          try {
+            const result = await verifyProPayment({
+              razorpayOrderId: payment.razorpayOrderId,
+              razorpayPaymentId: payment.razorpayPaymentId,
+              signature: payment.razorpaySignature,
+            });
+            if (result.success) {
+              setPro(true);
+              updateUser({ pro: true });
+              notifySuccess('Welcome to Pro!', 'Your account is now on CardPro Pro');
+            } else {
+              notifyError('Payment not verified', result.message || 'Could not verify your payment');
+            }
+          } catch (err) {
+            notifyError(
+              'Payment not verified',
+              extractError(err, 'Something went wrong while verifying your payment. Contact support with your payment ID.')
+            );
+          }
+        },
+        onDismiss: () => {
+          // Modal closed without paying — nothing to update.
+        },
+      });
+    } catch (err) {
+      notifyError('Could not start checkout', extractError(err, 'Failed to create the payment order'));
+    } finally {
+      setCheckingOut(false);
+    }
+  };
+
+  return (
+    <section className="overflow-hidden rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/[0.08] via-transparent to-fuchsia-500/[0.06] shadow-xl shadow-amber-950/20 backdrop-blur-xl">
+      {/* Header */}
+      <div className="border-b border-amber-400/20 px-6 py-5">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 text-slate-900 shadow-lg shadow-amber-900/40">
+            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+            </svg>
+          </span>
+          <div>
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
+              CardPro Pro
+              {pro === true && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-900">
+                  PRO
+                </span>
+              )}
+            </h2>
+            <p className="text-xs text-white/50">
+              {pro === true ? 'Your Pro membership is active' : 'One-time payment, lifetime access'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-6 py-5">
+        {pro === null ? (
+          <div className="space-y-3">
+            <div className="skeleton h-6 w-1/2" />
+            <div className="skeleton h-10 w-full" />
+          </div>
+        ) : pro ? (
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+              </svg>
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-white">You're on CardPro Pro</p>
+              <p className="mt-0.5 max-w-md text-xs text-white/50">
+                All Pro features are unlocked on your account. Thanks for supporting CardPro AI!
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-4xl font-bold text-white">₹999</span>
+                <span className="text-sm text-white/50">one-time</span>
+              </div>
+              <ul className="mt-4 space-y-2">
+                {PRO_FEATURES.map((feature) => (
+                  <li key={feature} className="flex items-center gap-2 text-sm text-white/70">
+                    <svg className="h-4 w-4 shrink-0 text-amber-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="flex flex-col items-start gap-3 lg:items-end">
+              <button
+                onClick={handleUpgrade}
+                disabled={checkingOut}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-6 py-3 text-sm font-bold text-slate-900 shadow-lg shadow-amber-900/40 transition-all duration-200 hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {checkingOut ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-900/30 border-t-slate-900" />
+                    Starting checkout…
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                    </svg>
+                    Upgrade to Pro
+                  </>
+                )}
+              </button>
+              <p className="text-xs text-white/40">
+                Secure payments powered by <span className="font-semibold text-white/60">Razorpay</span> · UPI, cards
+                & netbanking
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 

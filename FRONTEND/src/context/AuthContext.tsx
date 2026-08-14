@@ -10,6 +10,8 @@ interface AuthContextType {
   signup: (data: any) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
+  /** Merge fields into the cached user (e.g. pro: true after a payment). */
+  updateUser: (patch: Record<string, any>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -67,6 +69,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const updateUser = (patch: Record<string, any>) => {
+    setUser((prev: any) => {
+      const next = { ...prev, ...patch };
+      localStorage.setItem('user', JSON.stringify(next));
+      return next;
+    });
+  };
+
   const logout = async () => {
     setUser(null);
     localStorage.removeItem('token');
@@ -82,7 +92,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         login, 
         signup, 
         logout, 
-        clearError 
+        clearError, 
+        updateUser 
     }}>
       {children}
     </AuthContext.Provider>

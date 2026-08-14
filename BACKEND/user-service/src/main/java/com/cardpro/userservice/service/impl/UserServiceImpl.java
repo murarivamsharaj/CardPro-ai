@@ -200,6 +200,7 @@ public class UserServiceImpl implements UserService {
                 .profileImage(user.getProfileImage())
                 .role(user.getRole())
                 .active(user.isActive())
+                .pro(user.isPro())
                 .emailNotificationsEnabled(user.getEmailNotificationsEnabled())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())

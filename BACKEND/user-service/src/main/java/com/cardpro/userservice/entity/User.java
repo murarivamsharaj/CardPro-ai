@@ -41,6 +41,10 @@ public class User {
     @Builder.Default
     private boolean active = true;
 
+    /** Whether the user has paid for the CardPro Pro subscription. */
+    @Builder.Default
+    private boolean isPro = false;
+
     /** Master preference consumed by the lead-notification pipeline. */
     @Builder.Default
     private Boolean emailNotificationsEnabled = true;

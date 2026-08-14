@@ -74,6 +74,18 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, errorDetail);
     }
 
+    @ExceptionHandler(PaymentVerificationException.class)
+    public ResponseEntity<Map<String, Object>> handlePaymentVerification(PaymentVerificationException ex) {
+        log.warn("Payment verification failed: {}", ex.getMessage());
+
+        Map<String, Object> errorDetail = new HashMap<>();
+        errorDetail.put("code", "PAYMENT_VERIFICATION_FAILED");
+        errorDetail.put("message", ex.getMessage());
+        errorDetail.put("details", null);
+
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, errorDetail);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
         log.warn("Illegal argument: {}", ex.getMessage());

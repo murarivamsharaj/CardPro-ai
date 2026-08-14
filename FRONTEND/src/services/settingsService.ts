@@ -32,6 +32,8 @@ export interface UserProfile {
   phoneNumber?: string;
   role?: string;
   active?: boolean;
+  /** Whether the user holds a CardPro Pro subscription. */
+  pro?: boolean;
   emailNotificationsEnabled?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -72,6 +74,43 @@ export const updateMyProfile = async (profile: {
 
 export const updateEmailNotifications = async (enabled: boolean): Promise<UserProfile> => {
   const { data } = await userApi.put<UserProfile>('/users/notifications', { enabled });
+  return data;
+};
+
+/* ─────────────── payments (user-service, direct) ─────────────── */
+
+export interface CreateOrderResponse {
+  orderId: string;
+  /** Public Razorpay Key ID used to open the Checkout modal. */
+  keyId: string;
+  /** Order amount in paise (₹999 → 99900). */
+  amount: number;
+  currency: string;
+  status: string;
+}
+
+export interface VerifyPaymentPayload {
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  /** Razorpay signature returned by the Checkout handler. */
+  signature: string;
+}
+
+export interface VerifyPaymentResponse {
+  success: boolean;
+  message: string;
+  pro: boolean;
+}
+
+/** Create a Razorpay order for the ₹999 CardPro Pro upgrade. */
+export const createProOrder = async (): Promise<CreateOrderResponse> => {
+  const { data } = await userApi.post<CreateOrderResponse>('/users/payments/create-order');
+  return data;
+};
+
+/** Verify the Razorpay signature server-side; on success activates Pro. */
+export const verifyProPayment = async (payload: VerifyPaymentPayload): Promise<VerifyPaymentResponse> => {
+  const { data } = await userApi.post<VerifyPaymentResponse>('/users/payments/verify', payload);
   return data;
 };
 

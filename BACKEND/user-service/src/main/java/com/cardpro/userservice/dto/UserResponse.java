@@ -18,6 +18,7 @@
         private String profileImage;
         private String role;
         private boolean active;
+        private boolean pro;
         private Boolean emailNotificationsEnabled;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;

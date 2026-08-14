@@ -14,6 +14,7 @@ import LeadsPage from './pages/dashboard/LeadsPage';
 import SettingsPage from './pages/dashboard/SettingsPage';
 import PublicCardViewer from './pages/public/PublicCardViewer';
 import { DynamicIsland } from './components/common/DynamicIsland';
+import LandingPage from './pages/landing/LandingPage';
 import { ROUTES } from './utils/constants';
 
 export default function App() {
@@ -21,6 +22,7 @@ export default function App() {
     <AuthProvider>
       <Routes>
         {/* ── Public Routes ── */}
+        <Route path="/" element={<LandingPage />} />
         <Route path={ROUTES.LOGIN} element={<LoginPage />} />
         <Route path={ROUTES.SIGNUP} element={<SignupPage />} />
 

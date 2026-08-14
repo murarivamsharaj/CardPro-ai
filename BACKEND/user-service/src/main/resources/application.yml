@@ -34,6 +34,12 @@ app:
     # Shared with auth-service so the same token validates everywhere
     secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
 
+# Razorpay (CardPro Pro subscription) — TEST keys, overridable via env vars
+razorpay:
+  key:
+    id: ${RAZORPAY_KEY_ID:rzp_test_TPi0wBlkI3xiuG}
+    secret: ${RAZORPAY_KEY_SECRET:V7jK6wf07WMMhYlUtMz1udyW}
+
 eureka:
   client:
     service-url:
