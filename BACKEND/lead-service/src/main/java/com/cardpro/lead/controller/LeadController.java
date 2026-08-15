@@ -26,8 +26,9 @@ public class LeadController {
     public ResponseEntity<Page<LeadResponse>> getLeads(
             @RequestHeader("X-User-Id") String userId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(leadService.getLeadsByUserId(userId, page, size));
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false, defaultValue = "") String search) {
+        return ResponseEntity.ok(leadService.getLeadsByUserId(userId, page, size, search));
     }
 
     @GetMapping("/{id}/followup")

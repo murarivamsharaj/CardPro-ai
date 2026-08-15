@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../services/api';
+import { analyticsService } from '../../services/analyticsService';
 import { getErrorMessage } from '../../utils/api';
 
 interface FetchCardsParams {
@@ -13,6 +14,8 @@ interface CreateCardParams {
   slug: string;
   templateId: string;
   profileData: Record<string, any>;
+  address?: string;
+  socialLinks?: Record<string, string>;
 }
 
 export const fetchUserCards = createAsyncThunk(
@@ -54,6 +57,8 @@ interface UpdateMyCardParams {
   slug?: string;
   templateId?: string;
   profileData?: Record<string, any>;
+  address?: string;
+  socialLinks?: Record<string, string>;
   isActive?: boolean;
 }
 
@@ -97,8 +102,8 @@ export const fetchAnalytics = createAsyncThunk(
   'card/fetchAnalytics',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.get('/api/v1/analytics/summary');
-      return response.data;
+      // Single source of truth for analytics payloads lives in analyticsService
+      return await analyticsService.getUserAnalytics(30);
     } catch (error: any) {
       return rejectWithValue(getErrorMessage(error));
     }

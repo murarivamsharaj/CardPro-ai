@@ -16,5 +16,10 @@ public class UpdateCardRequest {
 
     private Map<String, Object> profileData; // Changed from String to Map for JSONB
 
+    @Size(max = 500, message = "Address must be at most 500 characters")
+    private String address;
+
+    private Map<String, String> socialLinks;
+
     private Boolean isActive;
 }

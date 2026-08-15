@@ -16,13 +16,16 @@ export interface Lead {
 interface FetchLeadsParams {
   page?: number;
   size?: number;
+  search?: string;
 }
 
 export const fetchLeads = createAsyncThunk(
   'lead/fetchLeads',
-  async ({ page = 0, size = 20 }: FetchLeadsParams, { rejectWithValue }) => {
+  async ({ page = 0, size = 20, search = '' }: FetchLeadsParams, { rejectWithValue }) => {
     try {
-      const response = await api.get(`/api/v1/leads?page=${page}&size=${size}`);
+      const params = new URLSearchParams({ page: String(page), size: String(size) });
+      if (search.trim()) params.set('search', search.trim());
+      const response = await api.get(`/api/v1/leads?${params.toString()}`);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(getErrorMessage(error));

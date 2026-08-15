@@ -21,6 +21,21 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+  # Flyway-managed schema (mirrors card-service/lead-service). Migrations live
+  # in src/main/resources/db/migration; ddl-auto stays on `update` so existing
+  # environments keep booting even if a migration is ever out of date.
+  flyway:
+    enabled: true
+    # The `users` table already exists in every environment (it was created by
+    # Hibernate ddl-auto before Flyway was adopted) with no schema-history
+    # table. baseline-on-migrate seeds the history and marks V1 (the
+    # pre-existing schema) as the baseline, so only V2+ actually run against
+    # those databases. On a fresh/empty database the baseline is skipped and
+    # V1 + V2 run normally.
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+
   # RabbitMQ (for publishing email-notification preference events)
   # Defaults match the canonical cardpro stack (BACKEND/docker-compose.yml).
   rabbitmq:
@@ -32,7 +47,10 @@ spring:
 app:
   jwt:
     # Shared with auth-service so the same token validates everywhere
-    secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+    secret: CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890
+  internal:
+    # Shared with card-service/lead-service for inter-service /internal calls
+    api-key: ${INTERNAL_API_KEY:cardpro-secret-key}
 
 # Razorpay (CardPro Pro subscription) — TEST keys, overridable via env vars
 razorpay:

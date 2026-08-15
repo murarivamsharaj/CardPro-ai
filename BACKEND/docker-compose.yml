@@ -107,7 +107,7 @@ services:
       EUREKA_USERNAME: eureka
       EUREKA_PASSWORD: eureka123
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_SECRET: ${JWT_SECRET:-CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
     networks:
       - cardpro-network
@@ -135,7 +135,7 @@ services:
       EUREKA_PASSWORD: eureka123
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
       EUREKA_INSTANCE_HOSTNAME: auth-service
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_SECRET: ${JWT_SECRET:-CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
     networks:
       - cardpro-network
@@ -165,7 +165,7 @@ services:
       EUREKA_PASSWORD: eureka123
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
       EUREKA_INSTANCE_HOSTNAME: card-service
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_SECRET: ${JWT_SECRET:-CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
     networks:
       - cardpro-network
@@ -188,7 +188,7 @@ services:
       EUREKA_USERNAME: eureka
       EUREKA_PASSWORD: eureka123
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_SECRET: ${JWT_SECRET:-CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
     networks:
       - cardpro-network
@@ -213,7 +213,7 @@ services:
       EUREKA_USERNAME: eureka
       EUREKA_PASSWORD: eureka123
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_SECRET: ${JWT_SECRET:-CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
       # These will pull securely from your .env file!
       GMAIL_USERNAME: ${GMAIL_USERNAME:-dummy-email@gmail.com}
@@ -240,7 +240,7 @@ services:
       EUREKA_PASSWORD: eureka123
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
       EUREKA_INSTANCE_HOSTNAME: product-service
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_SECRET: ${JWT_SECRET:-CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
     networks:
       - cardpro-network
@@ -267,7 +267,7 @@ services:
       EUREKA_USERNAME: eureka
       EUREKA_PASSWORD: eureka123
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_SECRET: ${JWT_SECRET:-CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
     networks:
       - cardpro-network
@@ -289,7 +289,7 @@ services:
       EUREKA_USERNAME: eureka
       EUREKA_PASSWORD: eureka123
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_SECRET: ${JWT_SECRET:-CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-dummy-openai-key}
       REMOVEBG_API_KEY: ${REMOVEBG_API_KEY:-dummy-removebg-key}
@@ -319,7 +319,7 @@ services:
       EUREKA_USERNAME: eureka
       EUREKA_PASSWORD: eureka123
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:eureka123@discovery-service:8761/eureka/
-      JWT_SECRET: ${JWT_SECRET:-404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      JWT_SECRET: ${JWT_SECRET:-CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
       INTERNAL_API_KEY: ${INTERNAL_API_KEY:-cardpro-secret-key}
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-dummy-razorpay-id}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-dummy-razorpay-secret}

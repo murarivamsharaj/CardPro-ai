@@ -44,6 +44,21 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
+        // 2b. Dedicated public slug routes — /api/v1/cards/public/{slug} and
+        //     /api/v1/cards/slug/{slug} are also unauthenticated.
+        if (HttpMethod.GET.equals(request.getMethod())
+                && (path.startsWith("/api/v1/cards/public/")
+                    || path.startsWith("/api/v1/cards/slug/"))) {
+            return chain.filter(exchange);
+        }
+
+        // 2c. Public analytics event ingestion from the card viewer
+        //     (PAGE_VIEW, SOCIAL_CLICK, BUTTON_CLICK, VCF_DOWNLOAD).
+        if (HttpMethod.POST.equals(request.getMethod())
+                && (path.equals("/api/v1/analytics/events") || path.equals("/api/v1/analytics/events/"))) {
+            return chain.filter(exchange);
+        }
+
         // 3. COMPLETELY BYPASS JWT VALIDATION FOR PUBLIC LEAD CAPTURE.
         //    POST /api/v1/leads is submitted by unauthenticated visitors through
         //    the "Contact Me" form on the public card viewer — the lead is

@@ -48,6 +48,10 @@ public class SecurityConfig {
                                 "/actuator/info"
                         ).permitAll()
 
+                        // Internal inter-service routes — verified via
+                        // X-Internal-API-Key inside the controller itself.
+                        .requestMatchers("/api/users/internal/**").permitAll()
+
                         // Legacy full-CRUD management endpoints are admin-only.
                         .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/users/{id:[0-9]+}").hasRole("ADMIN")

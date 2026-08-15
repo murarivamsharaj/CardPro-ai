@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import { getMyProfile } from '../services/settingsService';
 
 interface AuthContextType {
   user: any;
@@ -37,6 +38,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(response.data.user);
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      // auth-service's login payload has no `pro` field — pull the real
+      // membership status from user-service so the PRO badge renders correctly.
+      hydratePro();
     } catch (err: any) {
       const errorMsg =
         err.response?.data?.error?.message ||
@@ -57,6 +61,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(response.data.user);
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      hydratePro();
     } catch (err: any) {
       const errorMsg =
         err.response?.data?.error?.message ||
@@ -76,6 +81,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return next;
     });
   };
+
+  /**
+   * Merge the server-side profile (pro flag, etc.) into the cached auth user.
+   * The auth-service login payload does not carry `pro`, so the Navbar badge
+   * and any other `user.pro` consumers need this hydration from user-service.
+   */
+  const hydratePro = useCallback(async () => {
+    try {
+      const profile = await getMyProfile();
+      if (profile && typeof profile.pro === 'boolean') {
+        updateUser({ pro: profile.pro });
+      }
+    } catch {
+      // user-service unreachable or profile not ready — keep the cached value.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // On mount with an existing session, refresh pro from the server so a
+  // page reload (or a payment made in a previous session) shows the badge.
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token && token !== 'undefined' && token !== 'null') {
+      hydratePro();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const logout = async () => {
     setUser(null);

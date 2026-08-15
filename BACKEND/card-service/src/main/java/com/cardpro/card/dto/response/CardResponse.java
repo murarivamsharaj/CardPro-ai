@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 
+import java.util.Map;
 import java.util.UUID;
 
 @Data
@@ -16,5 +17,7 @@ public class CardResponse {
     private String templateId;
     private String profileData;
     private String aiAvatarUrl;
+    private String address;
+    private Map<String, String> socialLinks;
     private Boolean isActive;
 }

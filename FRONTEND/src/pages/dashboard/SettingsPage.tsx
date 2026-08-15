@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { notifySuccess, notifyError } from '../../store/useNotificationStore';
 import { THEME_STORAGE_KEY } from '../../utils/constants';
@@ -16,6 +17,9 @@ import {
   getTotalCardCount,
   createProOrder,
   verifyProPayment,
+  regenerateApiKey,
+  updateWebhookUrl,
+  deleteMyAccount,
   type UserProfile,
   type AdminUser,
 } from '../../services/settingsService';
@@ -36,14 +40,97 @@ function extractError(err: unknown, fallback: string): string {
 }
 
 /**
+ * Props shared by the profile-aware sections. The profile is fetched once by
+ * SettingsPage and distributed here; sections never fetch user-service
+ * themselves — they render from this shared state and report writes back via
+ * {@code onProfileChange}.
+ */
+interface ProfileAwareSectionProps {
+  email?: string;
+  /** Authoritative profile from user-service (null while loading / on failure). */
+  profile: UserProfile | null;
+  /** True while the initial profile fetch is still in flight. */
+  profileLoading: boolean;
+  /** Replace the shared profile after a successful write (also syncs AuthContext). */
+  onProfileChange: (profile: UserProfile) => void;
+}
+
+/**
  * Settings — profile, security, appearance, notifications, and (for admins)
  * the Super Admin Command Center. Theme preference is purely client-side
  * (localStorage + data-theme on <html>); everything else hits the services
  * through the gateway or user-service directly.
+ *
+ * The authenticated user's profile is fetched from user-service EXACTLY ONCE
+ * here and distributed to every section via props. That single source of truth
+ * keeps Pro status, Profile Details, watermark, notifications, API key and
+ * webhook in agreement with each other AND with the AuthContext (Navbar).
  */
 export const SettingsPage: React.FC = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
+  const email = user?.email;
+
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  /**
+   * Fetches the authoritative profile from user-service and shares it with
+   * every child section. Also heals any drift between the database and the
+   * cached auth user so the Navbar PRO badge and ProSection can never disagree.
+   */
+  const refreshProfile = useCallback(async () => {
+    if (!email) {
+      setProfileLoading(false);
+      return null;
+    }
+    setProfileLoading(true);
+    try {
+      const p = await getMyProfile();
+      setProfile(p);
+      if (typeof p.pro === 'boolean' && p.pro !== user?.pro) {
+        updateUser({ pro: p.pro });
+      }
+      return p;
+    } catch (err) {
+      // Surface the failure once instead of each section silently guessing.
+      console.error('Settings: could not load profile from user-service', err);
+      setProfile(null);
+      return null;
+    } finally {
+      setProfileLoading(false);
+    }
+  }, [email, user?.pro, updateUser]);
+
+  useEffect(() => {
+    refreshProfile();
+  }, [refreshProfile]);
+
+  /**
+   * After any successful write, replace the shared profile AND merge the
+   * server-confirmed fields into the AuthContext user so the Navbar and all
+   * consumers re-render instantly.
+   */
+  const handleProfileChange = useCallback(
+    (p: UserProfile) => {
+      setProfile(p);
+      updateUser({
+        pro: p.pro === true,
+        removeWatermark: p.removeWatermark === true,
+        displayName: p.displayName || '',
+        phoneNumber: p.phoneNumber || '',
+        jobTitle: p.jobTitle || '',
+      });
+    },
+    [updateUser]
+  );
+
+  const sectionProps: ProfileAwareSectionProps = {
+    email,
+    profile,
+    profileLoading,
+    onProfileChange: handleProfileChange,
+  };
 
   return (
     <div className="mx-auto max-w-5xl p-6 lg:p-8">
@@ -67,10 +154,13 @@ export const SettingsPage: React.FC = () => {
 
       <div className="space-y-6">
         <AppearanceSection />
-        <ProSection email={user?.email} />
-        <ProfileSection email={user?.email} />
+        <ProSection {...sectionProps} />
+        <ProfileSection {...sectionProps} />
         <PasswordSection />
-        <NotificationsSection email={user?.email} />
+        <NotificationsSection {...sectionProps} />
+        <CardPreferencesSection {...sectionProps} />
+        <DeveloperIntegrationsSection {...sectionProps} />
+        <DangerZoneSection email={email} />
         {isAdmin && <AdminCommandCenter currentUserId={user?.id} />}
       </div>
     </div>
@@ -196,8 +286,7 @@ function AppearanceSection() {
 
 /* ─────────────────────────── Profile ─────────────────────────── */
 
-function ProfileSection({ email }: { email?: string }) {
-  const [loading, setLoading] = useState(true);
+function ProfileSection({ email, profile, profileLoading, onProfileChange }: ProfileAwareSectionProps) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     displayName: '',
@@ -205,29 +294,17 @@ function ProfileSection({ email }: { email?: string }) {
     jobTitle: '',
   });
 
-  const load = useCallback(async () => {
-    if (!email) return;
-    setLoading(true);
-    try {
-      const profile = await getMyProfile();
+  // Prefill the form whenever the shared profile arrives or changes (the
+  // fetch itself lives in SettingsPage — one call, shared by every section).
+  useEffect(() => {
+    if (profile) {
       setForm({
         displayName: profile.displayName || '',
         phoneNumber: profile.phoneNumber || '',
         jobTitle: profile.jobTitle || '',
       });
-    } catch (err: any) {
-      // 404 (USER_PROFILE_NOT_FOUND) simply means no profile yet — show empty defaults.
-      if (err?.response?.status !== 404) {
-        notifyError('Could not load profile', extractError(err, 'Failed to load your profile'));
-      }
-    } finally {
-      setLoading(false);
     }
-  }, [email]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  }, [profile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -238,11 +315,15 @@ function ProfileSection({ email }: { email?: string }) {
     e.preventDefault();
     setSaving(true);
     try {
-      await updateMyProfile({
+      const updated = await updateMyProfile({
         displayName: form.displayName.trim(),
         phoneNumber: form.phoneNumber.trim(),
         jobTitle: form.jobTitle.trim(),
       });
+      // Distribute the authoritative response to the shared state (which also
+      // syncs AuthContext), so the form, Navbar and Sidebar all re-render
+      // instantly with the saved values.
+      onProfileChange(updated);
       notifySuccess('Profile updated', 'Your profile details have been saved');
     } catch (err) {
       notifyError('Could not save profile', extractError(err, 'Failed to update your profile'));
@@ -261,7 +342,7 @@ function ProfileSection({ email }: { email?: string }) {
         </svg>
       }
     >
-      {loading ? (
+      {profileLoading && !profile ? (
         <div className="space-y-3">
           <div className="skeleton h-10 w-full" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -417,23 +498,19 @@ function PasswordSection() {
 
 /* ───────────────────────── Notifications ───────────────────────── */
 
-function NotificationsSection({ email }: { email?: string }) {
-  const [enabled, setEnabled] = useState<boolean | null>(null);
+function NotificationsSection({ profile, onProfileChange }: ProfileAwareSectionProps) {
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!email) return;
-    getMyProfile()
-      .then((profile) => setEnabled(profile.emailNotificationsEnabled !== false))
-      .catch(() => setEnabled(true));
-  }, [email]);
+  // Read from the shared profile (fetched once by SettingsPage). Until it
+  // arrives we stay disabled and say we're loading, rather than guessing.
+  const enabled = profile ? profile.emailNotificationsEnabled !== false : null;
 
   const toggle = async (next: boolean) => {
     if (saving) return;
     setSaving(true);
     try {
-      const profile = await updateEmailNotifications(next);
-      setEnabled(profile.emailNotificationsEnabled !== false);
+      const updated = await updateEmailNotifications(next);
+      onProfileChange(updated);
       notifySuccess(
         next ? 'Notifications enabled' : 'Notifications disabled',
         next ? "You'll get an email when a new lead comes in" : 'New-lead emails are turned off'
@@ -477,6 +554,349 @@ function NotificationsSection({ email }: { email?: string }) {
   );
 }
 
+/* ─────────────────────── Global Card Preferences ─────────────────────── */
+
+/**
+ * Pro-only card preferences that apply to every card the user publishes.
+ * The {@code removeWatermark} flag is stored on the user-service profile and
+ * honored by the public card render (card-service resolves it per owner);
+ * non-Pro users see the toggle disabled with a "Requires Pro" badge.
+ */
+function CardPreferencesSection({ profile, onProfileChange }: ProfileAwareSectionProps) {
+  const { user } = useAuth();
+  const [saving, setSaving] = useState(false);
+
+  // Pro gate uses the SAME source the Navbar badge reads (AuthContext user,
+  // hydrated from user-service) with the shared profile as cross-check — so
+  // this section can never show the toggle as locked while the Navbar shows
+  // the user as PRO.
+  const isPro = user?.pro === true || profile?.pro === true;
+  const removeWatermark = profile?.removeWatermark === true;
+
+  const toggleWatermark = async (next: boolean) => {
+    if (saving || !isPro) return;
+    setSaving(true);
+    try {
+      const updated = await updateMyProfile({ removeWatermark: next });
+      onProfileChange(updated);
+      notifySuccess(
+        next ? 'Watermark removed' : 'Watermark restored',
+        next
+          ? 'Your public cards will no longer show the CardPro watermark'
+          : 'The CardPro watermark is back on your public cards'
+      );
+    } catch (err) {
+      notifyError('Could not update preference', extractError(err, 'Failed to save your card preference'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <SectionCard
+      title="Global Card Preferences"
+      description="Settings that apply across every card you publish."
+      icon={
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+        </svg>
+      }
+    >
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-medium text-white">Remove "Powered by CardPro" watermark</p>
+            {!isPro && (
+              <span className="inline-flex items-center rounded-full border border-amber-400/40 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                Requires Pro
+              </span>
+            )}
+          </div>
+          <p className="mt-1 max-w-md text-xs text-white/50">
+            Hide the CardPro branding footer from visitors viewing your public cards.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          {isPro && (
+            <span className={`text-xs font-medium ${removeWatermark ? 'text-emerald-300' : 'text-white/40'}`}>
+              {removeWatermark ? 'Watermark hidden' : 'Watermark visible'}
+            </span>
+          )}
+          <ToggleSwitch
+            checked={removeWatermark}
+            onChange={toggleWatermark}
+            disabled={!isPro || !profile || saving}
+            label="Remove CardPro watermark"
+          />
+        </div>
+      </div>
+    </SectionCard>
+  );
+}
+
+/* ──────────────────── Developer & Integrations ──────────────────── */
+
+/**
+ * Developer integrations: the user's secret API key (UUID, regenerable) and
+ * the webhook URL where future CRM lead-forwarding integrations can POST new
+ * leads. Both live on the user-service profile, which SettingsPage fetches
+ * once and shares here — the API key is always present because the backend
+ * persists a UUID for every profile on first read.
+ */
+function DeveloperIntegrationsSection({ profile, onProfileChange }: ProfileAwareSectionProps) {
+  const [webhook, setWebhook] = useState('');
+  const [regenerating, setRegenerating] = useState(false);
+  const [savingWebhook, setSavingWebhook] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Keep the local input in sync when the shared profile arrives / changes.
+  useEffect(() => {
+    setWebhook(profile?.webhookUrl || '');
+  }, [profile?.webhookUrl]);
+
+  const handleRegenerate = async () => {
+    if (regenerating) return;
+    setRegenerating(true);
+    try {
+      const updated = await regenerateApiKey();
+      onProfileChange(updated);
+      notifySuccess('API key regenerated', 'Your previous key is now invalid');
+    } catch (err) {
+      notifyError('Could not regenerate key', extractError(err, 'Failed to regenerate your API key'));
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
+  const handleSaveWebhook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (savingWebhook) return;
+    setSavingWebhook(true);
+    try {
+      const updated = await updateWebhookUrl(webhook.trim());
+      onProfileChange(updated);
+      setWebhook(updated.webhookUrl || '');
+      notifySuccess(
+        'Webhook saved',
+        updated.webhookUrl ? 'New leads will be forwarded to your webhook URL' : 'Webhook URL cleared'
+      );
+    } catch (err) {
+      notifyError('Could not save webhook', extractError(err, 'Failed to save your webhook URL'));
+    } finally {
+      setSavingWebhook(false);
+    }
+  };
+
+  const copyKey = async () => {
+    if (!profile?.apiKey) return;
+    try {
+      await navigator.clipboard.writeText(profile.apiKey);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable (e.g. insecure context) — the key stays visible.
+    }
+  };
+
+  return (
+    <SectionCard
+      title="Developer & Integrations"
+      description="Programmatic access to your CardPro account."
+      icon={
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+        </svg>
+      }
+    >
+      <div className="space-y-5">
+        {/* API Key */}
+        <div>
+          <div className="mb-1.5 flex items-center justify-between gap-3">
+            <label className="text-sm font-medium text-white/70">API Key</label>
+            <button
+              type="button"
+              onClick={handleRegenerate}
+              disabled={regenerating}
+              className="rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/70 transition-all hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {regenerating ? 'Regenerating…' : 'Regenerate'}
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              readOnly
+              value={profile?.apiKey || ''}
+              onFocus={(e) => e.currentTarget.select()}
+              placeholder="Your API key will appear here"
+              className="input-field font-mono text-xs"
+            />
+            <button
+              type="button"
+              onClick={copyKey}
+              disabled={!profile?.apiKey}
+              title="Copy API key"
+              className="shrink-0 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-xs font-semibold text-white/70 transition-all hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {copied ? '✓' : 'Copy'}
+            </button>
+          </div>
+          <p className="mt-1.5 text-xs text-white/40">
+            Authenticate external integrations with this secret key. Regenerating invalidates the previous key
+            immediately.
+          </p>
+        </div>
+
+        {/* Webhook URL */}
+        <form onSubmit={handleSaveWebhook} className="border-t border-white/10 pt-5">
+          <label htmlFor="webhook-url" className="mb-1.5 block text-sm font-medium text-white/70">
+            Webhook URL
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              id="webhook-url"
+              type="url"
+              value={webhook}
+              onChange={(e) => setWebhook(e.target.value)}
+              placeholder="https://your-crm.example.com/hooks/cardpro"
+              className="input-field"
+              autoComplete="off"
+            />
+            <button
+              type="submit"
+              disabled={savingWebhook}
+              className="btn-primary shrink-0 px-4 py-2.5 text-xs"
+            >
+              {savingWebhook ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+          <p className="mt-1.5 text-xs text-white/40">
+            Reserve the URL where future CRM integrations will receive new leads. Leave empty to clear.
+          </p>
+        </form>
+      </div>
+    </SectionCard>
+  );
+}
+
+/* ─────────────────────────── Danger Zone ─────────────────────────── */
+
+/**
+ * Account deletion with a strict confirmation gate: the user must type their
+ * own email address into the modal before the red button becomes active, and
+ * only then is DELETE /users/me called. On success the local session is
+ * cleared and the app redirects to /login.
+ */
+function DangerZoneSection({ email }: { email?: string }) {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (deleting || !email || confirmText.trim() !== email) return;
+    setDeleting(true);
+    try {
+      await deleteMyAccount();
+      // Clear the local session (token + cached user) and leave the app.
+      await logout();
+      navigate('/login', { replace: true });
+    } catch (err) {
+      notifyError('Could not delete account', extractError(err, 'Failed to delete your account'));
+      setDeleting(false);
+    }
+  };
+
+  const closeModal = () => {
+    if (deleting) return;
+    setConfirmOpen(false);
+    setConfirmText('');
+  };
+
+  const matches = !!email && confirmText.trim() === email;
+
+  return (
+    <SectionCard
+      title="Danger Zone"
+      description="Irreversible actions on your account."
+      icon={
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+        </svg>
+      }
+    >
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-white">Delete Account</p>
+          <p className="mt-1 max-w-md text-xs text-white/50">
+            Permanently disables your account, your cards stop working, and you can no longer sign in. This cannot be
+            undone.
+          </p>
+        </div>
+        <button
+          onClick={() => setConfirmOpen(true)}
+          className="rounded-xl border border-rose-400/40 bg-rose-500/10 px-5 py-2.5 text-xs font-bold text-rose-300 transition-all hover:bg-rose-500/20 hover:text-rose-200 active:scale-[0.97]"
+        >
+          Delete Account
+        </button>
+      </div>
+
+      {confirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-rose-400/30 bg-slate-900 shadow-2xl shadow-rose-950/40">
+            <div className="border-b border-rose-400/20 bg-rose-500/10 px-6 py-4">
+              <h3 className="flex items-center gap-2 text-base font-bold text-rose-200">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                Are you absolutely sure?
+              </h3>
+            </div>
+            <div className="space-y-4 px-6 py-5">
+              <p className="text-sm leading-relaxed text-white/70">
+                This will permanently disable your account. Your digital cards will stop resolving and you will lose
+                access to your leads and analytics. This action <span className="font-semibold text-rose-300">cannot be
+                undone</span>.
+              </p>
+              <div>
+                <label htmlFor="delete-confirm" className="mb-1.5 block text-sm font-medium text-white/70">
+                  Type <span className="font-mono font-semibold text-rose-300">{email}</span> to confirm
+                </label>
+                <input
+                  id="delete-confirm"
+                  type="text"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder={email}
+                  autoFocus
+                  className={`input-field font-mono text-sm ${matches ? 'border-emerald-400/50' : ''}`}
+                />
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-1">
+                <button
+                  onClick={closeModal}
+                  disabled={deleting}
+                  className="rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-xs font-semibold text-white/70 transition-all hover:bg-white/15 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={!matches || deleting}
+                  className="rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-rose-950/50 transition-all hover:brightness-110 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {deleting ? 'Deleting…' : 'Delete my account'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 /* ─────────────────────────── CardPro Pro ─────────────────────────── */
 
 const PRO_FEATURES = [
@@ -495,25 +915,23 @@ const PRO_FEATURES = [
  * opens the Checkout modal, and only flips the UI to PRO after the server has
  * cryptographically verified the payment signature.
  */
-function ProSection({ email }: { email?: string }) {
-  const { updateUser } = useAuth();
-  const [pro, setPro] = useState<boolean | null>(null);
+function ProSection({ email, profile, onProfileChange }: ProfileAwareSectionProps) {
+  const { user, updateUser } = useAuth();
   const [checkingOut, setCheckingOut] = useState(false);
 
-  const refreshPro = useCallback(async () => {
-    if (!email) return;
-    try {
-      const profile = await getMyProfile();
-      setPro(profile.pro === true);
-    } catch {
-      // No profile record yet (first visit) — the free tier applies.
-      setPro(false);
-    }
-  }, [email]);
+  // The Navbar PRO badge reads user?.pro (hydrated from user-service); the
+  // shared profile is the server cross-check. EITHER saying PRO means PRO —
+  // an active member must never see the ₹999 upgrade CTA, no matter which
+  // fetch answered first (or whether one failed).
+  const isPro = user?.pro === true || profile?.pro === true;
 
+  // Heal drift: if the server knows the user is Pro but the cached auth user
+  // doesn't (e.g. stale localStorage), fix the cache so both sides agree.
   useEffect(() => {
-    refreshPro();
-  }, [refreshPro]);
+    if (isPro && user?.pro !== true) {
+      updateUser({ pro: true });
+    }
+  }, [isPro, user?.pro, updateUser]);
 
   const handleUpgrade = async () => {
     if (checkingOut) return;
@@ -537,8 +955,11 @@ function ProSection({ email }: { email?: string }) {
               signature: payment.razorpaySignature,
             });
             if (result.success) {
-              setPro(true);
-              updateUser({ pro: true });
+              // Re-read the authoritative profile so the shared section state
+              // AND the auth context (navbar PRO badge) reflect exactly what
+              // the database holds — not just the verify reply.
+              const updated = await getMyProfile();
+              onProfileChange(updated);
               notifySuccess('Welcome to Pro!', 'Your account is now on CardPro Pro');
             } else {
               notifyError('Payment not verified', result.message || 'Could not verify your payment');
@@ -574,26 +995,21 @@ function ProSection({ email }: { email?: string }) {
           <div>
             <h2 className="flex items-center gap-2 text-lg font-semibold text-white">
               CardPro Pro
-              {pro === true && (
+              {isPro && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-900">
                   PRO
                 </span>
               )}
             </h2>
             <p className="text-xs text-white/50">
-              {pro === true ? 'Your Pro membership is active' : 'One-time payment, lifetime access'}
+              {isPro ? 'Your Pro membership is active' : 'One-time payment, lifetime access'}
             </p>
           </div>
         </div>
       </div>
 
       <div className="px-6 py-5">
-        {pro === null ? (
-          <div className="space-y-3">
-            <div className="skeleton h-6 w-1/2" />
-            <div className="skeleton h-10 w-full" />
-          </div>
-        ) : pro ? (
+        {isPro ? (
           <div className="flex items-start gap-3">
             <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300">
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

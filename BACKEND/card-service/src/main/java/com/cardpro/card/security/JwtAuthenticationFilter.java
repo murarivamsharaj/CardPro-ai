@@ -48,6 +48,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .getPayload();
 
                 String userId = claims.getSubject();
+                String email = claims.get("email", String.class);
 
                 @SuppressWarnings("unchecked")
                 List<String> roles = claims.get("roles", List.class);
@@ -58,9 +59,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             .map(SimpleGrantedAuthority::new)
                             .collect(Collectors.toList());
 
-                    // Create authentication object
+                    // Create authentication object. The principal carries both the
+                    // UUID subject (getName()) and the email claim so controllers
+                    // can attribute cards to their owner's user-service profile.
                     UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            userId, null, authorities
+                            new CardUserPrincipal(userId, email), null, authorities
                     );
 
                     // Set it into Spring Security Context so .hasRole() and .authenticated() pass!

@@ -4,6 +4,7 @@ import {
   fetchPublicCard,
   parseProfileData,
   submitLead,
+  trackCardEvent,
   PublicCardProfile,
   PublicCardResponse,
 } from '../../services/publicCardService';
@@ -42,6 +43,14 @@ export default function PublicCardViewer() {
       cancelled = true;
     };
   }, [slug]);
+
+  // Real-time analytics: record a PAGE_VIEW every time the public card loads.
+  // Fire-and-forget, unauthenticated, attributed to the card via its profile id.
+  useEffect(() => {
+    if (state.status === 'ready' && state.card.id) {
+      trackCardEvent(state.card.id, 'PAGE_VIEW');
+    }
+  }, [state]);
 
   if (state.status === 'loading') {
     return <ViewerShell>{<LoadingSkeleton />}</ViewerShell>;
@@ -107,6 +116,28 @@ function NotFound({ message }: { message: string }) {
   );
 }
 
+/** Social platforms rendered in the Connect section, in display order. */
+const SOCIAL_PLATFORMS: { key: string; label: string; icon: React.FC<IconProps> }[] = [
+  { key: 'linkedin', label: 'LinkedIn', icon: LinkedInIcon },
+  { key: 'github', label: 'GitHub', icon: GitHubIcon },
+  { key: 'twitter', label: 'Twitter / X', icon: TwitterIcon },
+  { key: 'instagram', label: 'Instagram', icon: InstagramIcon },
+  { key: 'youtube', label: 'YouTube', icon: YouTubeIcon },
+  { key: 'website', label: 'Website', icon: GlobeIcon },
+  { key: 'whatsapp', label: 'WhatsApp', icon: WhatsAppIcon },
+];
+
+/** Legacy profileData fields that feed each platform before the schema expansion. */
+const LEGACY_SOCIAL_FIELDS: Record<string, string[]> = {
+  linkedin: ['linkedin'],
+  github: ['github'],
+  twitter: ['twitter'],
+  instagram: ['instagram'],
+  youtube: ['youtube'],
+  website: ['website', 'portfolio'],
+  whatsapp: ['whatsapp'],
+};
+
 function CardContent({ card }: { card: PublicCardResponse }) {
   const profile = useMemo(() => parseProfileData(card.profileData), [card.profileData]);
   // blob: URLs only live in the browser session that created them — a public
@@ -130,17 +161,34 @@ function CardContent({ card }: { card: PublicCardResponse }) {
     [profile]
   );
 
-  const links = useMemo(
-    () =>
-      [
-        { label: 'LinkedIn', href: profile.linkedin, icon: LinkIcon },
-        { label: 'GitHub', href: profile.github, icon: LinkIcon },
-        { label: 'Website', href: profile.website || profile.portfolio, icon: LinkIcon },
-        { label: 'YouTube', href: profile.youtube, icon: LinkIcon },
-        { label: 'Instagram', href: profile.instagram, icon: LinkIcon },
-      ].filter((l) => l.href),
-    [profile]
-  );
+  const address = card.address || profile.address || '';
+  const mapsUrl = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : '';
+
+  // Social links: the entity's social_links map is authoritative; legacy
+  // profileData fields fill in the gaps for cards created before the expansion.
+  const socials = useMemo(() => {
+    const merged: Record<string, string> = { ...(card.socialLinks || {}) };
+    for (const [key, legacyFields] of Object.entries(LEGACY_SOCIAL_FIELDS)) {
+      if (!merged[key]) {
+        for (const field of legacyFields) {
+          const value = profile[field];
+          if (typeof value === 'string' && value.trim()) {
+            merged[key] = value.trim();
+            break;
+          }
+        }
+      }
+    }
+    return SOCIAL_PLATFORMS.filter((platform) => merged[platform.key]).map((platform) => ({
+      ...platform,
+      href: merged[platform.key]!,
+    }));
+  }, [card.socialLinks, profile]);
+
+  /** Fire an interaction event before the browser acts on the click. */
+  const fireClick = (eventType: 'BUTTON_CLICK' | 'SOCIAL_CLICK', linkLabel: string) => {
+    if (card.id) trackCardEvent(card.id, eventType, linkLabel);
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -167,12 +215,33 @@ function CardContent({ card }: { card: PublicCardResponse }) {
               href={action.href}
               target={action.href.startsWith('http') ? '_blank' : undefined}
               rel="noreferrer"
+              onClick={() => fireClick('BUTTON_CLICK', action.label)}
               className="glass-card group flex flex-col items-center gap-2 px-2 py-4 text-center"
             >
               <action.icon className="h-6 w-6 text-fuchsia-300 transition-transform duration-200 group-hover:scale-110" />
               <span className="text-xs font-semibold text-white/80">{action.label}</span>
             </a>
           ))}
+        </div>
+      )}
+
+      {/* Address / location with quick-open map link */}
+      {address && (
+        <div className="glass-panel p-5">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Location</p>
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noreferrer"
+            onClick={() => fireClick('BUTTON_CLICK', 'Location / Maps')}
+            className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white/80 transition-all duration-200 hover:border-white/25 hover:bg-white/10 hover:text-white"
+          >
+            <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-fuchsia-300" />
+            <span className="min-w-0 flex-1">{address}</span>
+            <svg className="mt-0.5 h-4 w-4 shrink-0 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+            </svg>
+          </a>
         </div>
       )}
 
@@ -191,20 +260,21 @@ function CardContent({ card }: { card: PublicCardResponse }) {
       )}
 
       {/* Social / portfolio links */}
-      {links.length > 0 && (
+      {socials.length > 0 && (
         <div className="glass-panel p-5">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/50">Connect</p>
           <div className="flex flex-col gap-2">
-            {links.map((link) => (
+            {socials.map((social) => (
               <a
-                key={link.label}
-                href={link.href!}
+                key={social.key}
+                href={social.href}
                 target="_blank"
                 rel="noreferrer"
+                onClick={() => fireClick('SOCIAL_CLICK', social.label)}
                 className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white/80 transition-all duration-200 hover:border-white/25 hover:bg-white/10 hover:text-white"
               >
-                <link.icon className="h-4 w-4 text-fuchsia-300" />
-                {link.label}
+                <social.icon className="h-4 w-4 text-fuchsia-300" />
+                {social.label}
                 <svg className="ml-auto h-4 w-4 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                 </svg>
@@ -215,22 +285,36 @@ function CardContent({ card }: { card: PublicCardResponse }) {
       )}
 
       {/* Save contact (vCard) */}
-      <SaveContactButton profile={profile} name={name} title={title} />
+      <SaveContactButton profileId={card.id ?? null} profile={profile} name={name} title={title} />
 
       {/* Contact Me — lets visitors send their info to the card owner */}
       <ContactMeForm profileId={card.id ?? null} />
 
-      <p className="mt-2 text-center text-[11px] text-white/30">
-        Powered by CardPro — {card.slug ? `cardpro.ai/c/${card.slug}` : ''}
-      </p>
+      {/* Watermark footer — hidden when the owner (Pro) opted out of it */}
+      {!card.removeWatermark && (
+        <p className="mt-2 text-center text-[11px] text-white/30">
+          Powered by CardPro — {card.slug ? `cardpro.ai/c/${card.slug}` : ''}
+        </p>
+      )}
     </div>
   );
 }
 
-function SaveContactButton({ profile, name, title }: { profile: PublicCardProfile; name: string; title: string }) {
+function SaveContactButton({
+  profileId,
+  profile,
+  name,
+  title,
+}: {
+  profileId: string | null;
+  profile: PublicCardProfile;
+  name: string;
+  title: string;
+}) {
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
+    if (profileId) trackCardEvent(profileId, 'VCF_DOWNLOAD', 'vCard');
     const vcard = buildVCard(profile, name, title);
     const blob = new Blob([vcard], { type: 'text/vcard' });
     const url = URL.createObjectURL(blob);
@@ -264,6 +348,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function ContactMeForm({ profileId }: { profileId: string | null }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<ContactFormStatus>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -299,11 +384,13 @@ function ContactMeForm({ profileId }: { profileId: string | null }) {
         profileId,
         visitorName: name.trim(),
         visitorEmail: email.trim(),
+        visitorPhone: phone.trim() || undefined,
         message: message.trim(),
       });
       // Clear the form so the visitor can send another message if they like.
       setName('');
       setEmail('');
+      setPhone('');
       setMessage('');
       setFieldErrors({});
       setStatus('success');
@@ -391,8 +478,27 @@ function ContactMeForm({ profileId }: { profileId: string | null }) {
         </div>
 
         <div>
+          <label htmlFor="contact-phone" className="mb-1.5 block text-sm font-medium text-white/70">
+            Phone <span className="text-white/35">(optional)</span>
+          </label>
+          <input
+            id="contact-phone"
+            type="tel"
+            value={phone}
+            onChange={(e) => {
+              setPhone(e.target.value);
+              setStatus('idle');
+            }}
+            placeholder="+1 555 010 2030"
+            className="input-field"
+            autoComplete="tel"
+            disabled={sending}
+          />
+        </div>
+
+        <div>
           <label htmlFor="contact-message" className="mb-1.5 block text-sm font-medium text-white/70">
-            Message
+            Note
           </label>
           <textarea
             id="contact-message"
@@ -486,10 +592,59 @@ function WhatsAppIcon({ className }: IconProps) {
   );
 }
 
-function LinkIcon({ className }: IconProps) {
+function LinkedInIcon({ className }: IconProps) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+    </svg>
+  );
+}
+
+function GitHubIcon({ className }: IconProps) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+    </svg>
+  );
+}
+
+function TwitterIcon({ className }: IconProps) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+function InstagramIcon({ className }: IconProps) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 8.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v8.25A2.25 2.25 0 006 16.5h2.25m8.25-8.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-7.5A2.25 2.25 0 018.25 18v-1.5m8.25-8.25h-3.375a1.5 1.5 0 01-1.5-1.5V3.375a1.5 1.5 0 011.5-1.5h3.375a1.5 1.5 0 011.5 1.5v3.375a1.5 1.5 0 01-1.5 1.5zM12 15.75a3.75 3.75 0 100-7.5 3.75 3.75 0 000 7.5z" />
+    </svg>
+  );
+}
+
+function YouTubeIcon({ className }: IconProps) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+    </svg>
+  );
+}
+
+function GlobeIcon({ className }: IconProps) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+    </svg>
+  );
+}
+
+function MapPinIcon({ className }: IconProps) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
     </svg>
   );
 }

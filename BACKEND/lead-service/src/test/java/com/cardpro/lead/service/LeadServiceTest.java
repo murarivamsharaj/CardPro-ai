@@ -82,7 +82,7 @@ class LeadServiceTest {
         when(leadRepository.findByProfileIdInOrderByCapturedAtDesc(List.of(cardId), org.springframework.data.domain.PageRequest.of(0, 20)))
                 .thenReturn(new PageImpl<>(List.of(lead)));
 
-        Page<LeadResponse> result = leadService.getLeadsByUserId(userId, 0, 20);
+        Page<LeadResponse> result = leadService.getLeadsByUserId(userId, 0, 20, "");
 
         assertThat(result.getContent()).hasSize(1);
         LeadResponse response = result.getContent().get(0);
@@ -104,7 +104,7 @@ class LeadServiceTest {
         when(cardServiceClient.getMyCard(userId, INTERNAL_API_KEY))
                 .thenThrow(new FeignException.NotFound("Card profile not found", request, new byte[0], Map.of()));
 
-        Page<LeadResponse> result = leadService.getLeadsByUserId(userId, 0, 20);
+        Page<LeadResponse> result = leadService.getLeadsByUserId(userId, 0, 20, "");
 
         assertThat(result.getContent()).isEmpty();
         // No card -> no point querying the lead repository.
@@ -116,7 +116,7 @@ class LeadServiceTest {
         String userId = UUID.randomUUID().toString();
         when(cardServiceClient.getMyCard(userId, INTERNAL_API_KEY)).thenReturn(null);
 
-        Page<LeadResponse> result = leadService.getLeadsByUserId(userId, 0, 20);
+        Page<LeadResponse> result = leadService.getLeadsByUserId(userId, 0, 20, "");
 
         assertThat(result.getContent()).isEmpty();
         verify(leadRepository, never()).findByProfileIdInOrderByCapturedAtDesc(any(), any());

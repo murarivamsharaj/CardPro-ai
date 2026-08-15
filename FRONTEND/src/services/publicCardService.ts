@@ -11,6 +11,16 @@ export interface PublicCardResponse {
   templateId: string | null;
   profileData: string | null;
   aiAvatarUrl?: string | null;
+  /** Physical / office address stored on the card profile (optional). */
+  address?: string | null;
+  /** Platform key ("linkedin", "github", ...) → profile URL. */
+  socialLinks?: Record<string, string> | null;
+  /**
+   * Owner's Pro preference: when true the "Powered by CardPro" watermark
+   * footer is hidden on this public card (resolved server-side by card-service
+   * from the owner's user-service profile).
+   */
+  removeWatermark?: boolean;
 }
 
 /** Fields stored inside the profileData JSON (mirrors the Create Card form + SRS). */
@@ -78,4 +88,56 @@ export async function submitLead(payload: SubmitLeadPayload): Promise<void> {
   await api.post('/api/v1/leads', payload, {
     skipAuthRedirect: true,
   });
+}
+
+/** Event types accepted by POST /api/v1/analytics/events. */
+export type CardEventType = 'PAGE_VIEW' | 'BUTTON_CLICK' | 'VCF_DOWNLOAD' | 'SOCIAL_CLICK';
+
+const VISITOR_ID_KEY = 'cardpro_visitor_id';
+
+/**
+ * Stable per-browser visitor id used for the unique-visitor analytics metric.
+ * Anonymized (a random UUID) — no PII, persisted so repeat visits count as one
+ * visitor instead of one impression each.
+ */
+export function getOrCreateVisitorId(): string {
+  const existing = localStorage.getItem(VISITOR_ID_KEY);
+  if (existing && existing !== 'undefined' && existing !== 'null') return existing;
+  const id =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+  try {
+    localStorage.setItem(VISITOR_ID_KEY, id);
+  } catch {
+    // Private browsing / storage disabled — fall back to an in-session id.
+  }
+  return id;
+}
+
+/**
+ * Fires an analytics event (PAGE_VIEW, SOCIAL_CLICK, BUTTON_CLICK,
+ * VCF_DOWNLOAD) against a card. Fire-and-forget: failures are swallowed so a
+ * tracking hiccup can never break the public card experience. Uses
+ * `skipAuthRedirect` because visitors are unauthenticated.
+ */
+export async function trackCardEvent(
+  profileId: string,
+  eventType: CardEventType,
+  linkLabel?: string
+): Promise<void> {
+  try {
+    await api.post(
+      '/api/v1/analytics/events',
+      {
+        profileId,
+        eventType,
+        linkLabel: linkLabel ?? null,
+        visitorId: getOrCreateVisitorId(),
+      },
+      { skipAuthRedirect: true }
+    );
+  } catch {
+    // Analytics must never block the visitor's experience.
+  }
 }

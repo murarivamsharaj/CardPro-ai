@@ -4,6 +4,7 @@ import com.cardpro.userservice.dto.NotificationPreferenceRequest;
 import com.cardpro.userservice.dto.ProfileUpdateRequest;
 import com.cardpro.userservice.dto.UserRequest;
 import com.cardpro.userservice.dto.UserResponse;
+import com.cardpro.userservice.dto.WebhookUpdateRequest;
 import com.cardpro.userservice.entity.User;
 import com.cardpro.userservice.exception.DuplicateEmailException;
 import com.cardpro.userservice.exception.UserNotFoundException;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -47,6 +49,7 @@ public class UserServiceImpl implements UserService {
                 .phoneNumber(request.getPhoneNumber())
                 .profileImage(request.getProfileImage())
                 .role(request.getRole()) // <-- FIXED: Added role mapping
+                .apiKey(UUID.randomUUID().toString())
                 .build();
 
         user = userRepository.save(user);
@@ -115,10 +118,29 @@ public class UserServiceImpl implements UserService {
     // ──────────────────────────────────────────────
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public UserResponse getProfileByEmail(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserProfileNotFoundException(email));
+        // A valid JWT proves the caller exists in auth-service, but user-service
+        // records are created lazily. Returning 404 here was the "ghost profile"
+        // bug: the frontend could never read the Pro flag for accounts without a
+        // row, so the UI stayed on the free tier even after isPro was saved.
+        //
+        // The row (and pro=true) is now created on the very first read so that:
+        //   • the profile the Settings page sees is the one persisted in the DB;
+        //   • the developer API key is generated ONCE, saved, and returned — not
+        //     a fresh throwaway UUID per request for users without a row yet.
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            user = userRepository.save(newProfile(email));
+            log.info("Created lazy profile on first read for {}", email);
+        } else if (user.getApiKey() == null) {
+            // Backfill for profiles created before the developer-integrations
+            // feature shipped. At most one write per user.
+            user.setApiKey(UUID.randomUUID().toString());
+            user = userRepository.save(user);
+            log.info("Backfilled API key for existing profile {}", email);
+        }
+
         return mapToResponse(user);
     }
 
@@ -138,6 +160,15 @@ public class UserServiceImpl implements UserService {
         }
         if (request.getJobTitle() != null) {
             user.setJobTitle(request.getJobTitle());
+        }
+        if (request.getRemoveWatermark() != null) {
+            user.setRemoveWatermark(request.getRemoveWatermark());
+        }
+        if (request.getWebhookUrl() != null) {
+            user.setWebhookUrl(normalizeWebhookUrl(request.getWebhookUrl()));
+        }
+        if (user.getApiKey() == null) {
+            user.setApiKey(UUID.randomUUID().toString());
         }
 
         user = userRepository.save(user);
@@ -162,6 +193,55 @@ public class UserServiceImpl implements UserService {
         return mapToResponse(user);
     }
 
+    @Override
+    @Transactional
+    public UserResponse regenerateApiKey(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseGet(() -> newProfile(email));
+
+        user.setApiKey(UUID.randomUUID().toString());
+        user = userRepository.save(user);
+        log.info("API key regenerated for user: {}", user.getEmail());
+        return mapToResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse updateWebhookUrl(String email, WebhookUpdateRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseGet(() -> newProfile(email));
+
+        user.setWebhookUrl(normalizeWebhookUrl(request.getWebhookUrl()));
+        user = userRepository.save(user);
+        log.info("Webhook URL updated for user: {}", user.getEmail());
+        return mapToResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public UserResponse deleteAccount(String email) {
+        // Soft delete: the row is kept (other services may still reference the
+        // account) but active=false bars the account from further use. Idempotent
+        // — deleting an already-deleted (or never-created) profile is a no-op.
+        User user = userRepository.findByEmail(email)
+                .orElseGet(() -> newProfile(email));
+
+        if (user.isActive()) {
+            user.setActive(false);
+            user = userRepository.save(user);
+            log.info("Account soft-deleted for user: {}", user.getEmail());
+        }
+        return mapToResponse(user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean getWatermarkPreference(String email) {
+        return userRepository.findByEmail(email)
+                .map(User::isRemoveWatermark)
+                .orElse(false);
+    }
+
     /**
      * Creates a minimal profile record keyed by the JWT email. Keeps the
      * existing schema rules intact: {@code firstName}/{@code lastName} are NOT
@@ -179,7 +259,15 @@ public class UserServiceImpl implements UserService {
                 .role("ROLE_USER")
                 .active(true)
                 .emailNotificationsEnabled(true)
+                .apiKey(UUID.randomUUID().toString())
                 .build();
+    }
+
+    /** Empty strings mean "clear the webhook" — persisted as null. */
+    private String normalizeWebhookUrl(String webhookUrl) {
+        if (webhookUrl == null) return null;
+        String trimmed = webhookUrl.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     /**
@@ -201,6 +289,9 @@ public class UserServiceImpl implements UserService {
                 .role(user.getRole())
                 .active(user.isActive())
                 .pro(user.isPro())
+                .removeWatermark(user.isRemoveWatermark())
+                .apiKey(user.getApiKey())
+                .webhookUrl(user.getWebhookUrl())
                 .emailNotificationsEnabled(user.getEmailNotificationsEnabled())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())

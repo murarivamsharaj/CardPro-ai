@@ -1,5 +1,6 @@
 import axios from 'axios';
 import api from './api';
+import { analyticsService } from './analyticsService';
 import { USER_SERVICE_BASE_URL } from '../utils/constants';
 
 /**
@@ -34,6 +35,12 @@ export interface UserProfile {
   active?: boolean;
   /** Whether the user holds a CardPro Pro subscription. */
   pro?: boolean;
+  /** Pro perk: hides the "Powered by CardPro" watermark on public cards. */
+  removeWatermark?: boolean;
+  /** Developer integration: auto-generated API key (regenerable). */
+  apiKey?: string;
+  /** Developer integration: webhook URL for future CRM lead-forwarding. */
+  webhookUrl?: string;
   emailNotificationsEnabled?: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -67,6 +74,8 @@ export const updateMyProfile = async (profile: {
   displayName?: string;
   phoneNumber?: string;
   jobTitle?: string;
+  removeWatermark?: boolean;
+  webhookUrl?: string;
 }): Promise<UserProfile> => {
   const { data } = await userApi.put<UserProfile>('/users/profile', profile);
   return data;
@@ -74,6 +83,24 @@ export const updateMyProfile = async (profile: {
 
 export const updateEmailNotifications = async (enabled: boolean): Promise<UserProfile> => {
   const { data } = await userApi.put<UserProfile>('/users/notifications', { enabled });
+  return data;
+};
+
+/** Generate a fresh developer API key (the previous one stops working). */
+export const regenerateApiKey = async (): Promise<UserProfile> => {
+  const { data } = await userApi.post<UserProfile>('/users/api-key/regenerate');
+  return data;
+};
+
+/** Save (or clear) the CRM lead-forwarding webhook URL. */
+export const updateWebhookUrl = async (webhookUrl: string): Promise<UserProfile> => {
+  const { data } = await userApi.put<UserProfile>('/users/webhook', { webhookUrl });
+  return data;
+};
+
+/** Soft-delete the caller's own account. */
+export const deleteMyAccount = async (): Promise<UserProfile> => {
+  const { data } = await userApi.delete<UserProfile>('/users/me');
   return data;
 };
 
@@ -152,6 +179,6 @@ export const setRegistrationConfig = async (enabled: boolean): Promise<Registrat
 /* ─────────────── card-service (via gateway) ────────────────── */
 
 export const getTotalCardCount = async (): Promise<TotalCardsResponse> => {
-  const { data } = await api.get<TotalCardsResponse>('/api/v1/analytics/admin/total-cards');
-  return data;
+  // Delegates to analyticsService so the analytics API contract lives in one place
+  return analyticsService.getTotalCards();
 };

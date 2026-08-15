@@ -19,5 +19,13 @@ public class CreateCardRequest {
 
     @NotNull(message = "Profile data is required")
     private Map<String, Object> profileData; // Maps cleanly to JSONB column
+
+    // Physical / office address shown on the public card (optional)
+    @Size(max = 500, message = "Address must be at most 500 characters")
+    private String address;
+
+    // Flexible social media: platform key ("linkedin", "github", "twitter", ...)
+    // -> profile URL. Stored as JSONB on the card profile.
+    private Map<String, String> socialLinks;
 }
 

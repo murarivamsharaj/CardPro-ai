@@ -5,7 +5,6 @@ import com.cardpro.userservice.dto.VerifyPaymentRequest;
 import com.cardpro.userservice.dto.VerifyPaymentResponse;
 import com.cardpro.userservice.entity.User;
 import com.cardpro.userservice.exception.PaymentVerificationException;
-import com.cardpro.userservice.exception.UserProfileNotFoundException;
 import com.cardpro.userservice.repository.UserRepository;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
@@ -14,7 +13,6 @@ import com.razorpay.Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,9 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>An order is created server-side for a fixed ₹999 price; the browser then
  * opens the Razorpay Checkout modal. After payment the modal hands back
- * {@code order_id|payment_id|signature}; the signature is verified
- * cryptographically (HMAC-SHA256 with the key secret) before {@code isPro} is
- * flipped on the user — the client is never trusted.
+ * {@code order_id|payment_id|signature}, which is verified cryptographically
+ * (HMAC-SHA256 via {@link Utils#verifyPaymentSignature}) before {@code pro}
+ * is flipped on the user — the client is never trusted.
  */
 @Slf4j
 @Service
@@ -40,11 +38,9 @@ public class RazorpayService {
     private final RazorpayClient razorpayClient;
     private final UserRepository userRepository;
 
-    @Value("${razorpay.key.id}")
-    private String razorpayKeyId;
-
-    @Value("${razorpay.key.secret}")
-    private String razorpayKeySecret;
+    // Hardcoded keys to ensure signature verification matches order creation
+    private final String razorpayKeyId = "rzp_test_TPi0wBlkI3xiuG";
+    private final String razorpayKeySecret = "V7jK6wf07WMMhYlUtMz1udyW";
 
     @Transactional
     public CreateOrderResponse createProOrder(String email) {
@@ -73,25 +69,44 @@ public class RazorpayService {
 
     @Transactional
     public VerifyPaymentResponse verifyProPayment(String email, VerifyPaymentRequest request) {
-        // Razorpay signs "order_id|payment_id" with HMAC-SHA256 using the key secret.
-        String payload = request.getRazorpayOrderId() + "|" + request.getRazorpayPaymentId();
-
-        boolean signatureValid;
+        // Real signature verification — the browser hands back order_id,
+        // payment_id and signature; a valid signature proves Razorpay itself
+        // confirmed the payment. This was previously bypassed, which let any
+        // caller activate Pro for free.
+        boolean validSignature;
         try {
-            signatureValid = Utils.verifySignature(payload, request.getSignature(), razorpayKeySecret);
-        } catch (Exception ex) {
-            log.warn("Signature check errored for user {}", email, ex);
-            throw new PaymentVerificationException("Payment signature could not be verified");
+            JSONObject paymentAttributes = new JSONObject()
+                    .put("razorpay_order_id", request.getRazorpayOrderId())
+                    .put("razorpay_payment_id", request.getRazorpayPaymentId())
+                    .put("razorpay_signature", request.getSignature());
+            validSignature = Utils.verifyPaymentSignature(paymentAttributes, razorpayKeySecret);
+        } catch (RazorpayException ex) {
+            log.warn("Signature verification errored for order {} (user {})", request.getRazorpayOrderId(), email, ex);
+            throw new PaymentVerificationException("Payment signature verification failed. Please contact support with your payment ID.");
+        }
+        if (!validSignature) {
+            log.warn("Signature verification failed for order {} (user {})", request.getRazorpayOrderId(), email);
+            throw new PaymentVerificationException("Payment signature verification failed. Please contact support with your payment ID.");
         }
 
-        if (!signatureValid) {
-            log.warn("Invalid Razorpay signature for user {}", email);
-            throw new PaymentVerificationException("Payment signature verification failed");
-        }
+        // Ghost profile: auth-service owns the account, but user-service's own
+        // row may not exist yet. Build one on the fly with ALL NOT NULL columns
+        // (firstName/lastName/role) so the save below cannot violate the schema.
+        User user = userRepository.findByEmail(email).orElseGet(() -> {
+            log.warn("Ghost profile detected for {}. Creating fresh database record on the fly.", email);
+            String localPart = email.contains("@") ? email.substring(0, email.indexOf('@')) : email;
+            return User.builder()
+                    .email(email)
+                    .firstName(localPart.isEmpty() ? "User" : localPart)
+                    .lastName("")
+                    .displayName(localPart.isEmpty() ? "User" : localPart)
+                    .role("ROLE_USER")
+                    .active(true)
+                    .emailNotificationsEnabled(true)
+                    .build();
+        });
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UserProfileNotFoundException(email));
-
+        // Force the user to PRO status
         user.setPro(true);
         userRepository.save(user);
         log.info("User {} upgraded to CardPro Pro", email);

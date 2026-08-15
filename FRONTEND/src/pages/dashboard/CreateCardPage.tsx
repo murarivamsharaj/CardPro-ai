@@ -10,6 +10,8 @@ import { extractPrimaryColor, buildCardGradient, DEFAULT_CARD_GRADIENT, isLightC
 interface FormState {
   slug: string;
   templateId: string;
+  address: string;
+  socialLinks: Record<string, string>;
   profileData: {
     fullName: string;
     title: string;
@@ -23,6 +25,16 @@ interface FormState {
 const INITIAL_FORM: FormState = {
   slug: '',
   templateId: 'default',
+  address: '',
+  socialLinks: {
+    linkedin: '',
+    github: '',
+    twitter: '',
+    instagram: '',
+    youtube: '',
+    website: '',
+    whatsapp: '',
+  },
   profileData: {
     fullName: '',
     title: '',
@@ -32,6 +44,17 @@ const INITIAL_FORM: FormState = {
     email: '',
   },
 };
+
+/** Social platforms editable in the form (key → label + placeholder). */
+const SOCIAL_FIELDS: { key: string; label: string; placeholder: string }[] = [
+  { key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/username' },
+  { key: 'github', label: 'GitHub', placeholder: 'https://github.com/username' },
+  { key: 'twitter', label: 'Twitter / X', placeholder: 'https://x.com/username' },
+  { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/username' },
+  { key: 'youtube', label: 'YouTube', placeholder: 'https://youtube.com/@channel' },
+  { key: 'website', label: 'Website / Portfolio', placeholder: 'https://yourwebsite.com' },
+  { key: 'whatsapp', label: 'WhatsApp', placeholder: 'https://wa.me/15550102030' },
+];
 
 const FIELD_LABELS: Record<string, string> = {
   fullName: 'Full Name',
@@ -58,6 +81,13 @@ export const CreateCardPage: React.FC = () => {
         ...formData.profileData,
         [name]: value,
       },
+    });
+  };
+
+  const handleSocialChange = (key: string, value: string) => {
+    setFormData({
+      ...formData,
+      socialLinks: { ...formData.socialLinks, [key]: value.trim() },
     });
   };
 
@@ -180,6 +210,39 @@ export const CreateCardPage: React.FC = () => {
               )}
             </div>
           ))}
+
+          <div className="border-t border-white/10 pt-6">
+            <label className="mb-1.5 block text-sm font-medium text-white/70">Address / Location</label>
+            <input
+              type="text"
+              name="address"
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              placeholder="123 Main Street, Bengaluru, India"
+              className="input-field"
+            />
+            <p className="mt-1 text-xs text-white/40">
+              Shown on your public card with a quick-open Google Maps link.
+            </p>
+          </div>
+
+          <div className="border-t border-white/10 pt-6">
+            <p className="mb-1.5 block text-sm font-medium text-white/70">Social Media Profiles</p>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {SOCIAL_FIELDS.map((social) => (
+                <div key={social.key}>
+                  <label className="mb-1.5 block text-xs font-medium text-white/60">{social.label}</label>
+                  <input
+                    type="url"
+                    value={formData.socialLinks[social.key] || ''}
+                    onChange={(e) => handleSocialChange(social.key, e.target.value)}
+                    placeholder={social.placeholder}
+                    className="input-field"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
 
           <button type="submit" disabled={loading} className="btn-primary w-full">
             {loading ? (

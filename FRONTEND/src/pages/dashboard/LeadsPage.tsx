@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchLeads, Lead } from '../../store/slices/leadsSlice';
@@ -46,12 +46,57 @@ export const LeadsPage: React.FC = () => {
   const navigate = useNavigate();
   const { leads, loading, error, totalElements, totalPages, currentPage } = useSelector((state: any) => state.leads);
 
+  const [search, setSearch] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const load = useCallback(
+    (page: number, keyword: string) => {
+      dispatch(fetchLeads({ page, size: 20, search: keyword }));
+    },
+    [dispatch]
+  );
+
   useEffect(() => {
-    dispatch(fetchLeads({ page: 0, size: 20 }));
-  }, [dispatch]);
+    load(0, '');
+  }, [load]);
+
+  // Debounced server-side search across name / email / phone.
+  const handleSearchChange = (value: string) => {
+    setSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => load(0, value.trim()), 350);
+  };
+
+  useEffect(() => () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+  }, []);
 
   const loadPage = (page: number) => {
-    dispatch(fetchLeads({ page, size: 20 }));
+    load(page, search);
+  };
+
+  const exportCsv = () => {
+    const rows: Record<string, string>[] = leads.map((lead: Lead) => ({
+      Name: lead.visitorName || '',
+      Email: lead.visitorEmail || '',
+      Phone: lead.visitorPhone || '',
+      Note: lead.message || '',
+      'AI Follow-up': lead.aiFollowup || '',
+      Captured: lead.capturedAt ? new Date(lead.capturedAt).toLocaleString() : '',
+    }));
+
+    const escape = (value: unknown) => `"${String(value).replace(/"/g, '""')}"`;
+    const header = Object.keys(rows[0] || {}).join(',');
+    const body = rows.map((row) => Object.values(row).map(escape).join(',')).join('\n');
+    const blob = new Blob([`${header}\n${body}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `cardpro-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -65,9 +110,37 @@ export const LeadsPage: React.FC = () => {
               : 'Everyone who reaches out through your cards'}
           </p>
         </div>
-        <button onClick={() => dispatch(fetchLeads({ page: 0, size: 20 }))} className="btn-secondary text-xs" disabled={loading}>
-          {loading ? 'Refreshing…' : 'Refresh'}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <svg
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/35"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Search name, email, phone…"
+              className="input-field w-56 pl-9"
+            />
+          </div>
+          <button
+            onClick={exportCsv}
+            disabled={leads.length === 0}
+            className="btn-secondary text-xs disabled:cursor-not-allowed disabled:opacity-50"
+            title={leads.length === 0 ? 'No leads to export' : 'Download current results as CSV'}
+          >
+            Export CSV
+          </button>
+          <button onClick={() => load(0, search)} className="btn-secondary text-xs" disabled={loading}>
+            {loading ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {/* Error state with retry */}
@@ -84,7 +157,7 @@ export const LeadsPage: React.FC = () => {
               <p className="text-xs text-white/50">{error}</p>
             </div>
           </div>
-          <button onClick={() => dispatch(fetchLeads({ page: 0, size: 20 }))} className="btn-secondary text-xs">
+          <button onClick={() => load(0, search)} className="btn-secondary text-xs">
             Retry
           </button>
         </div>

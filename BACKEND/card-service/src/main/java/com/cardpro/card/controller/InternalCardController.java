@@ -1,7 +1,9 @@
 package com.cardpro.card.controller;
 
+import com.cardpro.card.dto.request.RecordClickRequest;
 import com.cardpro.card.dto.response.CardResponse;
 import com.cardpro.card.service.CardService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,9 +34,31 @@ public class InternalCardController {
         return ResponseEntity.ok(cardService.getCardByUserId(userId));
     }
 
+    /**
+     * Bumps the profile's cumulative view counter and appends a VIEW event to
+     * the analytics log. {@code visitorId} is optional: when supplied (e.g. a
+     * session id from the card viewer), the analytics dashboard can report
+     * unique visitors instead of raw impressions.
+     */
     @PostMapping("/{profileId}/increment-view")
-    public ResponseEntity<Void> incrementView(@PathVariable UUID profileId) {
-        cardService.incrementViewCount(profileId);
+    public ResponseEntity<Void> incrementView(
+            @PathVariable UUID profileId,
+            @RequestParam(required = false) String visitorId) {
+        cardService.incrementViewCount(profileId, visitorId);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Records a CLICK event for the analytics dashboard (per-link performance).
+     * Callers are internal integrations (e.g. a service tracking taps on the
+     * public viewer's social links).
+     */
+    @PostMapping("/{profileId}/increment-click")
+    public ResponseEntity<Void> incrementClick(
+            @PathVariable UUID profileId,
+            @Valid @RequestBody RecordClickRequest request,
+            @RequestParam(required = false) String visitorId) {
+        cardService.recordClick(profileId, request.linkLabel(), visitorId);
         return ResponseEntity.ok().build();
     }
 }

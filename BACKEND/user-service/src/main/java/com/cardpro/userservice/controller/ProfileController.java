@@ -3,6 +3,7 @@ package com.cardpro.userservice.controller;
 import com.cardpro.userservice.dto.NotificationPreferenceRequest;
 import com.cardpro.userservice.dto.ProfileUpdateRequest;
 import com.cardpro.userservice.dto.UserResponse;
+import com.cardpro.userservice.dto.WebhookUpdateRequest;
 import com.cardpro.userservice.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -51,5 +52,25 @@ public class ProfileController {
         return ResponseEntity.ok(
                 userService.updateNotificationPreference(principal.getName(), request)
         );
+    }
+
+    @PostMapping("/api-key/regenerate")
+    @Operation(summary = "Generate a fresh developer API key (invalidates the old one)")
+    public ResponseEntity<UserResponse> regenerateApiKey(Principal principal) {
+        return ResponseEntity.ok(userService.regenerateApiKey(principal.getName()));
+    }
+
+    @PutMapping("/webhook")
+    @Operation(summary = "Save (or clear) the CRM lead-forwarding webhook URL")
+    public ResponseEntity<UserResponse> updateWebhookUrl(
+            Principal principal,
+            @Valid @RequestBody WebhookUpdateRequest request) {
+        return ResponseEntity.ok(userService.updateWebhookUrl(principal.getName(), request));
+    }
+
+    @DeleteMapping("/me")
+    @Operation(summary = "Delete the caller's own account (soft delete — active=false)")
+    public ResponseEntity<UserResponse> deleteAccount(Principal principal) {
+        return ResponseEntity.ok(userService.deleteAccount(principal.getName()));
     }
 }

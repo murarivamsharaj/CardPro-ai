@@ -8,6 +8,7 @@ import com.cardpro.lead.entity.Lead;
 import com.cardpro.lead.repository.LeadRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class LeadService {
@@ -48,17 +50,23 @@ public class LeadService {
         return mapToResponse(lead);
     }
 
-    public Page<LeadResponse> getLeadsByUserId(String userId, int page, int size) {
+    public Page<LeadResponse> getLeadsByUserId(String userId, int page, int size, String search) {
         PageRequest pageRequest = PageRequest.of(page, size);
 
         // Resolve the user's card ids via card-service. A user with no card yet
         // gets a 404 from the internal endpoint — treat that as "no leads" rather
-        // than surfacing an error on the dashboard.
+        // than surfacing an error on the dashboard. Any other card-service
+        // failure (500, timeouts, discovery hiccups) degrades the same way: the
+        // dashboard must never hard-fail just because the card lookup hiccuped.
         List<UUID> cardIds;
         try {
             CardProfileResponse card = cardServiceClient.getMyCard(userId, internalApiKey);
             cardIds = card != null ? List.of(card.id()) : List.of();
-        } catch (FeignException.NotFound e) {
+        } catch (FeignException e) {
+            if (!(e instanceof FeignException.NotFound)) {
+                log.warn("Leads: could not resolve cards for user {} from card-service: {}",
+                        userId, e.getMessage());
+            }
             return Page.empty(pageRequest);
         }
 
@@ -66,7 +74,13 @@ public class LeadService {
             return Page.empty(pageRequest);
         }
 
-        return leadRepository.findByProfileIdInOrderByCapturedAtDesc(cardIds, pageRequest)
+        String keyword = search == null ? "" : search.trim();
+        if (keyword.isEmpty()) {
+            return leadRepository.findByProfileIdInOrderByCapturedAtDesc(cardIds, pageRequest)
+                .map(this::mapToResponse);
+        }
+
+        return leadRepository.searchByProfileIds(cardIds, keyword, pageRequest)
             .map(this::mapToResponse);
     }
 
@@ -78,6 +92,14 @@ public class LeadService {
 
     public void deductCredit(String userId) {
         // Integrate with auth-service for credit deduction
+    }
+
+    /**
+     * Number of leads captured against a single card profile. Used by
+     * card-service's analytics aggregation (via {@code GET /internal/count}).
+     */
+    public long countLeadsForProfile(UUID profileId) {
+        return leadRepository.countByProfileId(profileId);
     }
 
     private LeadResponse mapToResponse(Lead lead) {

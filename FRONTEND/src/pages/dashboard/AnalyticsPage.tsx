@@ -1,19 +1,14 @@
-import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchAnalytics } from '../../store/slices/cardSlice';
+import React, { useCallback, useEffect, useState } from 'react';
+import {
+  analyticsService,
+  AnalyticsResponse,
+  AdminAnalyticsResponse,
+} from '../../services/analyticsService';
+import { useAuth } from '../../context/AuthContext';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 import { Skeleton } from '../../components/common/Skeleton';
 
-interface AnalyticsData {
-  totalViews?: number;
-  uniqueVisitors?: number;
-  totalLeads?: number;
-  clickThroughRate?: number;
-  viewsByDate?: Record<string, number>;
-  clicksByLink?: Record<string, number>;
-}
-
-const EMPTY_ANALYTICS: AnalyticsData = {
+const EMPTY_ANALYTICS: AnalyticsResponse = {
   totalViews: 0,
   uniqueVisitors: 0,
   totalLeads: 0,
@@ -22,7 +17,13 @@ const EMPTY_ANALYTICS: AnalyticsData = {
   clicksByLink: {},
 };
 
-const STATS: { key: keyof AnalyticsData; label: string; icon: React.ReactNode; accent: string }[] = [
+const PERIODS: { label: string; days: number }[] = [
+  { label: 'Last 7 days', days: 7 },
+  { label: 'Last 30 days', days: 30 },
+  { label: 'Last 90 days', days: 90 },
+];
+
+const STATS: { key: keyof AnalyticsResponse; label: string; icon: React.ReactNode; accent: string; format?: (v: number) => string }[] = [
   {
     key: 'totalViews',
     label: 'Total Views',
@@ -63,21 +64,50 @@ const STATS: { key: keyof AnalyticsData; label: string; icon: React.ReactNode; a
         <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
       </svg>
     ),
+    format: (v: number) => `${(v || 0).toFixed(1)}%`,
   },
 ];
 
 export const AnalyticsPage: React.FC = () => {
-  const dispatch = useDispatch<any>();
-  const { analytics, loading, error } = useSelector((state: any) => state.card);
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+
+  const [data, setData] = useState<AnalyticsResponse>(EMPTY_ANALYTICS);
+  const [adminData, setAdminData] = useState<AdminAnalyticsResponse | null>(null);
+  const [days, setDays] = useState(30);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async (windowDays: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await analyticsService.getUserAnalytics(windowDays);
+      setData(response);
+    } catch (err: any) {
+      setError(err?.response?.data?.error?.message || err?.message || 'Failed to load analytics');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    dispatch(fetchAnalytics());
-  }, [dispatch]);
+    load(days);
+  }, [days, load]);
 
-  const data: AnalyticsData = analytics && typeof analytics === 'object' ? analytics : EMPTY_ANALYTICS;
+  // Platform-wide card stats — admins only, non-fatal if it fails.
+  useEffect(() => {
+    if (!isAdmin) return;
+    analyticsService
+      .getAdminOverview()
+      .then(setAdminData)
+      .catch(() => setAdminData(null));
+  }, [isAdmin]);
+
   const chartData = data.viewsByDate
     ? Object.entries(data.viewsByDate).map(([date, views]) => ({ date, views: Number(views) || 0 }))
     : [];
+  const hasChartData = chartData.some((d) => d.views > 0);
 
   const linkData = data.clicksByLink
     ? Object.entries(data.clicksByLink).map(([name, clicks]) => ({ name, clicks: Number(clicks) || 0 }))
@@ -90,9 +120,27 @@ export const AnalyticsPage: React.FC = () => {
           <h1 className="text-3xl font-bold tracking-tight text-white">Analytics & Reports</h1>
           <p className="mt-1 text-sm text-white/50">How the world discovers your digital cards</p>
         </div>
-        <button onClick={() => dispatch(fetchAnalytics())} className="btn-secondary text-xs" disabled={loading}>
-          {loading ? 'Refreshing…' : 'Refresh'}
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/5 p-1">
+            {PERIODS.map((period) => (
+              <button
+                key={period.days}
+                onClick={() => setDays(period.days)}
+                disabled={loading}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 ${
+                  days === period.days
+                    ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-fuchsia-900/40'
+                    : 'text-white/60 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                {period.label}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => load(days)} className="btn-secondary text-xs" disabled={loading}>
+            {loading ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {/* Error state with retry */}
@@ -109,7 +157,7 @@ export const AnalyticsPage: React.FC = () => {
               <p className="text-xs text-white/50">{error}</p>
             </div>
           </div>
-          <button onClick={() => dispatch(fetchAnalytics())} className="btn-secondary text-xs">
+          <button onClick={() => load(days)} className="btn-secondary text-xs">
             Retry
           </button>
         </div>
@@ -136,28 +184,62 @@ export const AnalyticsPage: React.FC = () => {
                 </span>
               </div>
               <p className="mt-3 text-3xl font-bold tracking-tight text-white">
-                {stat.key === 'clickThroughRate'
-                  ? `${(Number(data.clickThroughRate) || 0).toFixed(1)}%`
-                  : (Number(data[stat.key as keyof AnalyticsData]) || 0).toLocaleString()}
+                {stat.format
+                  ? stat.format(Number(data[stat.key]) || 0)
+                  : (Number(data[stat.key as keyof AnalyticsResponse]) || 0).toLocaleString()}
               </p>
             </div>
           ))}
         </div>
       )}
 
+      {/* Admin platform overview */}
+      {isAdmin && (
+        <div className="glass-panel mt-8 p-6">
+          <div className="mb-1 flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-fuchsia-900/40">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+              </svg>
+            </span>
+            <div>
+              <h2 className="text-lg font-semibold text-white">Platform Overview</h2>
+              <p className="text-xs text-white/40">Card health metrics across the whole CardPro AI platform</p>
+            </div>
+          </div>
+          {adminData ? (
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { label: 'Total Cards', value: adminData.totalCards },
+                { label: 'Active Cards', value: adminData.activeCards },
+                { label: 'Total Views', value: adminData.totalViews },
+                { label: 'Views (Last 7 Days)', value: adminData.viewsLast7Days },
+              ].map((tile) => (
+                <div key={tile.label} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs font-medium uppercase tracking-wider text-white/50">{tile.label}</p>
+                  <p className="mt-2 text-2xl font-bold tracking-tight text-white">{tile.value.toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Skeleton className="mt-4 h-24 w-full" />
+          )}
+        </div>
+      )}
+
       {/* Time-series chart */}
-      <div className="glass-panel mb-8 p-6">
+      <div className="glass-panel mt-8 p-6">
         <h2 className="text-xl font-semibold text-white">Profile Views Over Time</h2>
         <p className="mt-0.5 text-xs text-white/40">Daily impressions across all your cards</p>
         <div className="mt-4 h-80 w-full">
           {loading ? (
             <Skeleton className="h-full w-full" />
-          ) : chartData.length > 0 ? (
+          ) : hasChartData ? (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
                 <XAxis dataKey="date" stroke="rgba(255,255,255,0.35)" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }} />
-                <YAxis stroke="rgba(255,255,255,0.35)" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }} />
+                <YAxis stroke="rgba(255,255,255,0.35)" tick={{ fill: 'rgba(255,255,255,0.5)', fontSize: 12 }} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{
                     background: 'rgba(15, 15, 35, 0.9)',
@@ -180,7 +262,7 @@ export const AnalyticsPage: React.FC = () => {
             </ResponsiveContainer>
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-white/40">
-              No view data available yet.
+              No view data available yet — share your card link to get started.
             </div>
           )}
         </div>
@@ -188,7 +270,7 @@ export const AnalyticsPage: React.FC = () => {
 
       {/* Link performance */}
       {!loading && linkData.length > 0 && (
-        <div className="glass-panel p-6">
+        <div className="glass-panel mt-8 p-6">
           <h2 className="text-xl font-semibold text-white">Link Performance</h2>
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {linkData.map(({ name, clicks }) => {

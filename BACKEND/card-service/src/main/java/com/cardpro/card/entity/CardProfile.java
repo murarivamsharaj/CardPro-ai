@@ -6,6 +6,8 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -23,6 +25,15 @@ public class CardProfile {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    /**
+     * Account email of the card's owner, captured from the JWT at create time.
+     * Lets card-service resolve the owner's user-service preferences (e.g.
+     * removeWatermark) when rendering the public card — the card's UUID key and
+     * user-service's email key have no direct join.
+     */
+    @Column(name = "owner_email", length = 255)
+    private String ownerEmail;
+
     @Column(nullable = false, unique = true, length = 100)
     private String slug;
 
@@ -37,6 +48,17 @@ public class CardProfile {
 
     @Column(name = "ai_avatar_url", length = 500)
     private String aiAvatarUrl;
+
+    // Physical / office address rendered on the public card. Optional.
+    @Column(name = "address", length = 500)
+    private String address;
+
+    // Flexible social media: platform key ("linkedin", "github", "twitter",
+    // "instagram", "youtube", "website", "whatsapp", ...) -> profile URL.
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "social_links", columnDefinition = "jsonb")
+    @Builder.Default
+    private Map<String, String> socialLinks = new HashMap<>();
 
     // Added to fix the incrementViewCount() error in your InternalCardController
     @Column(name = "view_count", nullable = false)

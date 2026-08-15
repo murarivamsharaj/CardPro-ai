@@ -14,6 +14,8 @@ interface CardItem {
   templateId?: string;
   profileData?: string;
   aiAvatarUrl?: string;
+  address?: string;
+  socialLinks?: Record<string, string>;
   isActive?: boolean;
 }
 
@@ -373,6 +375,17 @@ function ModalShell({ onClose, children }: { onClose: () => void; children: Reac
   );
 }
 
+/** Social platforms editable in the edit modal (key → label + placeholder). */
+const EDIT_SOCIAL_FIELDS: { key: string; label: string; placeholder: string }[] = [
+  { key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/username' },
+  { key: 'github', label: 'GitHub', placeholder: 'https://github.com/username' },
+  { key: 'twitter', label: 'Twitter / X', placeholder: 'https://x.com/username' },
+  { key: 'instagram', label: 'Instagram', placeholder: 'https://instagram.com/username' },
+  { key: 'youtube', label: 'YouTube', placeholder: 'https://youtube.com/@channel' },
+  { key: 'website', label: 'Website / Portfolio', placeholder: 'https://yourwebsite.com' },
+  { key: 'whatsapp', label: 'WhatsApp', placeholder: 'https://wa.me/15550102030' },
+];
+
 /** Edit form — PUT /api/v1/cards/me with the core profile fields. */
 function EditCardModal({
   card,
@@ -393,6 +406,16 @@ function EditCardModal({
     bio: profile.bio || '',
     phone: profile.phone || '',
     email: profile.email || '',
+    address: card.address || '',
+    socialLinks: {
+      linkedin: card.socialLinks?.linkedin || '',
+      github: card.socialLinks?.github || '',
+      twitter: card.socialLinks?.twitter || '',
+      instagram: card.socialLinks?.instagram || '',
+      youtube: card.socialLinks?.youtube || '',
+      website: card.socialLinks?.website || '',
+      whatsapp: card.socialLinks?.whatsapp || '',
+    } as Record<string, string>,
   });
   const [saving, setSaving] = useState(false);
 
@@ -404,9 +427,16 @@ function EditCardModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    const socialLinks: Record<string, string> = {};
+    for (const [key, value] of Object.entries(form.socialLinks)) {
+      if (value.trim()) socialLinks[key] = value.trim();
+    }
+
     const result = await dispatch(
       updateMyCard({
         slug: form.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+        address: form.address.trim() || undefined,
+        socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined,
         profileData: {
           fullName: form.fullName,
           title: form.title,
@@ -480,6 +510,37 @@ function EditCardModal({
             <label className="mb-1.5 block text-sm font-medium text-white/70">Email</label>
             <input type="email" name="email" value={form.email} onChange={handleChange} className="input-field" />
           </div>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-white/70">Address / Location</label>
+          <input
+            type="text"
+            value={form.address}
+            onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
+            placeholder="123 Main Street, Bengaluru, India"
+            className="input-field"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {EDIT_SOCIAL_FIELDS.map((social) => (
+            <div key={social.key}>
+              <label className="mb-1.5 block text-xs font-medium text-white/60">{social.label}</label>
+              <input
+                type="url"
+                value={form.socialLinks[social.key]}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    socialLinks: { ...prev.socialLinks, [social.key]: e.target.value },
+                  }))
+                }
+                placeholder={social.placeholder}
+                className="input-field"
+              />
+            </div>
+          ))}
         </div>
 
         <div className="flex items-center justify-end gap-3 pt-2">
