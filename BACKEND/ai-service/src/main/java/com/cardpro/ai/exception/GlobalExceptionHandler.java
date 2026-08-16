@@ -42,4 +42,23 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
+
+    /**
+     * AI card-detail generation failed (Gemini API error, timeout, or
+     * unparseable output). Logged in the service with the exact error body;
+     * surfaced here as a clean HTTP 500 — never masked by fake defaults.
+     */
+    @ExceptionHandler(CardGenerationException.class)
+    public ResponseEntity<Map<String, Object>> handleCardGenerationException(CardGenerationException ex) {
+        Map<String, Object> errorDetail = new HashMap<>();
+        errorDetail.put("code", "CARD_GENERATION_FAILED");
+        errorDetail.put("message", "AI card details could not be generated. Please try again.");
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "error");
+        response.put("error", errorDetail);
+        response.put("timestamp", Instant.now().toString());
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
 }

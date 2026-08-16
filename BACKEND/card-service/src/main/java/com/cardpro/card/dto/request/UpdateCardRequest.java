@@ -19,6 +19,9 @@ public class UpdateCardRequest {
     @Size(max = 500, message = "Address must be at most 500 characters")
     private String address;
 
+    @Size(max = 50, message = "Gender must be at most 50 characters")
+    private String gender;
+
     private Map<String, String> socialLinks;
 
     private Boolean isActive;

@@ -5,6 +5,7 @@ import { fetchUserCards } from '../../store/slices/cardSlice';
 import { TiltCard } from '../../components/common/TiltCard';
 import { SkeletonCard } from '../../components/common/Skeleton';
 import { notifySuccess, notifyError } from '../../store/useNotificationStore';
+import { resolveAvatarUrl } from '../../services/fileService';
 import { extractPrimaryColor, buildCardGradient, DEFAULT_CARD_GRADIENT, isLightColor } from '../../utils/colorUtils';
 import { ROUTES } from '../../utils/constants';
 
@@ -137,7 +138,7 @@ export const DashboardPage: React.FC = () => {
 /** A digital card preview with 3D tilt, brand-color gradient, and copy-link. */
 function CardPreview({ card }: { card: CardItem }) {
   const profile = useMemo(() => parseProfile(card), [card]);
-  const avatar = profile.avatarUrl || card.aiAvatarUrl || '';
+  const avatar = resolveAvatarUrl(profile.avatarUrl || card.aiAvatarUrl || '');
   const [gradient, setGradient] = useState<string>(DEFAULT_CARD_GRADIENT);
   const [lightText, setLightText] = useState(false);
 

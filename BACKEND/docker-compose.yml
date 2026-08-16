@@ -284,6 +284,7 @@ services:
       discovery-service:
         condition: service_healthy
     environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
       REDIS_HOST: redis
       REDIS_PORT: 6379
       EUREKA_USERNAME: eureka

@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { uploadFile } from '../../services/fileService';
+import { uploadFile, resolveAvatarUrl } from '../../services/fileService';
 import { notifyError, notifyInfo } from '../../store/useNotificationStore';
 
 interface ImageUploadProps {
@@ -15,7 +15,13 @@ interface ImageUploadProps {
  */
 export const ImageUpload: React.FC<ImageUploadProps> = ({ label, currentImage, onUploadSuccess }) => {
   const [uploading, setUploading] = useState(false);
-  const [preview, setPreview] = useState(currentImage || '');
+  // Stale blob: URLs from a previous session can never load again, so treat
+  // them as "no image" rather than rendering a permanently broken preview.
+  // Server-relative /api/... paths are resolved against the API Gateway so
+  // the <img> never 404s on the Vite dev server / static host port.
+  const [preview, setPreview] = useState(
+    currentImage && !currentImage.startsWith('blob:') ? resolveAvatarUrl(currentImage) : ''
+  );
   const [enhanceEnabled, setEnhanceEnabled] = useState(false);
   const [enhancing, setEnhancing] = useState(false);
   const [enhanced, setEnhanced] = useState(false);
@@ -25,15 +31,22 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({ label, currentImage, o
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Show the image instantly via a local object URL, then swap it for the
+    // persistent URL (server path or base64 data URL) once the upload settles.
+    const objectUrl = URL.createObjectURL(file);
+    setPreview(objectUrl);
+    setEnhanced(false);
     setUploading(true);
     try {
       const url = await uploadFile(file);
-      setPreview(url);
-      setEnhanced(false);
+      URL.revokeObjectURL(objectUrl);
+      setPreview(resolveAvatarUrl(url));
       onUploadSuccess(url);
     } catch (error) {
       console.error('Failed to upload image:', error);
-      notifyError('Upload failed', 'Please try uploading the image again.');
+      // Keep the local preview so the user still sees their image, but do not
+      // persist a blob: URL — the next page load would render a broken avatar.
+      notifyError('Upload failed', 'The preview stays local — the image was not saved. Please try again.');
     } finally {
       setUploading(false);
     }

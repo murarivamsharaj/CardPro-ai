@@ -53,6 +53,10 @@ public class CardProfile {
     @Column(name = "address", length = 500)
     private String address;
 
+    // Optional gender label shown on the card (Male / Female / Custom / Prefer not to say).
+    @Column(name = "gender", length = 50)
+    private String gender;
+
     // Flexible social media: platform key ("linkedin", "github", "twitter",
     // "instagram", "youtube", "website", "whatsapp", ...) -> profile URL.
     @JdbcTypeCode(SqlTypes.JSON)

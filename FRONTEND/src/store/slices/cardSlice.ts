@@ -15,6 +15,7 @@ interface CreateCardParams {
   templateId: string;
   profileData: Record<string, any>;
   address?: string;
+  gender?: string;
   socialLinks?: Record<string, string>;
 }
 
@@ -58,6 +59,7 @@ interface UpdateMyCardParams {
   templateId?: string;
   profileData?: Record<string, any>;
   address?: string;
+  gender?: string;
   socialLinks?: Record<string, string>;
   isActive?: boolean;
 }

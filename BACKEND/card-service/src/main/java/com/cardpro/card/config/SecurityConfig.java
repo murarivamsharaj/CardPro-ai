@@ -1,18 +1,9 @@
 package com.cardpro.card.config;
 
 import com.cardpro.card.security.JwtAuthenticationFilter;
-import jakarta.servlet.Filter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.Ordered;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -21,8 +12,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import java.io.IOException;
 
 @Configuration
 @EnableWebSecurity
@@ -72,42 +61,16 @@ public class SecurityConfig {
                         // admin metrics) stays JWT-protected.
                         .requestMatchers(HttpMethod.POST, "/api/v1/analytics/events").permitAll()
 
+                        // Uploaded card avatars must render for ANY visitor of the
+                        // public card viewer, so serving them is unauthenticated.
+                        // Uploading (POST) stays JWT-protected.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/files/view/**").permitAll()
+
                         // All private/management endpoints require a valid JWT
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
-
-    /**
-     * TACTICAL NUKE: Bypasses Spring Security for CORS preflight checks.
-     */
-    @Bean
-    public FilterRegistrationBean<Filter> rawCorsFilter() {
-        Filter filter = new Filter() {
-            @Override
-            public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain) throws IOException, ServletException {
-                HttpServletResponse response = (HttpServletResponse) res;
-                HttpServletRequest request = (HttpServletRequest) req;
-
-                response.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
-                response.setHeader("Access-Control-Allow-Credentials", "true");
-                response.setHeader("Access-Control-Allow-Methods", "POST, GET, PUT, OPTIONS, DELETE, PATCH");
-                response.setHeader("Access-Control-Max-Age", "3600");
-                response.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-
-                if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-                    response.setStatus(HttpServletResponse.SC_OK);
-                    return;
-                }
-
-                chain.doFilter(req, res);
-            }
-        };
-
-        FilterRegistrationBean<Filter> bean = new FilterRegistrationBean<>(filter);
-        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
-        return bean;
     }
 }

@@ -17,6 +17,7 @@ public class PublicCardResponse {
     private String profileData;
     private String aiAvatarUrl;
     private String address;
+    private String gender;
     private Map<String, String> socialLinks;
     /**
      * Owner's user-service preference (Pro perk): when true, the card viewer

@@ -21,4 +21,14 @@ public class OpenAiClient {
         // Implementation for WhatsApp follow-up generation
         return "";
     }
+
+    /**
+     * Generates card-detail suggestions (bio / tagline / job title) from a
+     * keyword prompt. Placeholder until the OpenAI Chat Completions call is
+     * implemented — callers currently fall back to the mock generator.
+     */
+    public String generateCardDetails(String prompt, String tone) {
+        // Implementation using OpenAI Chat Completions API
+        return null;
+    }
 }

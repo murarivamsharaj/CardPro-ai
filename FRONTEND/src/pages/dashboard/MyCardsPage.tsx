@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchMyCards, updateMyCard, deleteMyCard } from '../../store/slices/cardSlice';
 import { SkeletonCard } from '../../components/common/Skeleton';
+import { ImageUpload } from '../../components/common/ImageUpload';
+import { resolveAvatarUrl } from '../../services/fileService';
 import { notifySuccess, notifyError } from '../../store/useNotificationStore';
 import { extractPrimaryColor, buildCardGradient, DEFAULT_CARD_GRADIENT, isLightColor } from '../../utils/colorUtils';
 import { ROUTES } from '../../utils/constants';
@@ -15,6 +17,7 @@ interface CardItem {
   profileData?: string;
   aiAvatarUrl?: string;
   address?: string;
+  gender?: string;
   socialLinks?: Record<string, string>;
   isActive?: boolean;
 }
@@ -22,6 +25,7 @@ interface CardItem {
 interface ProfileData {
   fullName?: string;
   title?: string;
+  tagline?: string;
   bio?: string;
   avatarUrl?: string;
   phone?: string;
@@ -215,7 +219,7 @@ function CardGridCard({
   onDelete: () => void;
 }) {
   const profile = useMemo(() => parseProfile(card), [card]);
-  const avatar = profile.avatarUrl || card.aiAvatarUrl || '';
+  const avatar = resolveAvatarUrl(profile.avatarUrl || card.aiAvatarUrl || '');
   const [gradient, setGradient] = useState<string>(DEFAULT_CARD_GRADIENT);
   const [lightText, setLightText] = useState(false);
 
@@ -403,10 +407,13 @@ function EditCardModal({
     slug: card.slug || '',
     fullName: profile.fullName || '',
     title: profile.title || '',
+    tagline: profile.tagline || '',
     bio: profile.bio || '',
+    avatarUrl: profile.avatarUrl || '',
     phone: profile.phone || '',
     email: profile.email || '',
     address: card.address || '',
+    gender: card.gender || '',
     socialLinks: {
       linkedin: card.socialLinks?.linkedin || '',
       github: card.socialLinks?.github || '',
@@ -436,14 +443,16 @@ function EditCardModal({
       updateMyCard({
         slug: form.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
         address: form.address.trim() || undefined,
+        gender: form.gender || undefined,
         socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined,
         profileData: {
           fullName: form.fullName,
           title: form.title,
+          tagline: form.tagline,
           bio: form.bio,
           phone: form.phone,
           email: form.email,
-          avatarUrl: profile.avatarUrl,
+          avatarUrl: form.avatarUrl,
         },
       })
     );
@@ -487,6 +496,11 @@ function EditCardModal({
             className="input-field"
           />
         </div>
+        <ImageUpload
+          label="Profile Avatar / Logo"
+          currentImage={form.avatarUrl}
+          onUploadSuccess={(url) => setForm((prev) => ({ ...prev, avatarUrl: url }))}
+        />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-white/70">Full Name</label>
@@ -495,6 +509,10 @@ function EditCardModal({
           <div>
             <label className="mb-1.5 block text-sm font-medium text-white/70">Professional Title</label>
             <input type="text" name="title" value={form.title} onChange={handleChange} className="input-field" />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="mb-1.5 block text-sm font-medium text-white/70">Tagline</label>
+            <input type="text" name="tagline" value={form.tagline} onChange={handleChange} className="input-field" />
           </div>
         </div>
         <div>
@@ -510,6 +528,20 @@ function EditCardModal({
             <label className="mb-1.5 block text-sm font-medium text-white/70">Email</label>
             <input type="email" name="email" value={form.email} onChange={handleChange} className="input-field" />
           </div>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-white/70">Gender</label>
+          <select
+            value={form.gender}
+            onChange={(e) => setForm((prev) => ({ ...prev, gender: e.target.value }))}
+            className="input-field appearance-none"
+          >
+            <option value="">Prefer not to say</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Custom">Custom</option>
+          </select>
         </div>
 
         <div>

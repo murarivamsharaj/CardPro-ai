@@ -71,8 +71,9 @@ export const API_ENDPOINTS = {
     FOLLOWUP: (id: string) => `/leads/${id}/followup`,
   },
   AI: {
-    GENERATE_BIO: '/ai/generate-bio',
-    UPSCALE_PHOTO: '/ai/upscale-photo',
+    GENERATE_BIO: '/api/v1/ai/generate-bio',
+    GENERATE_CARD_DETAILS: '/api/v1/ai/generate-card-details',
+    UPSCALE_PHOTO: '/api/v1/ai/upscale-photo',
   },
   PAYMENTS: {
     CREATE_ORDER: '/payments/create-order',
@@ -93,6 +94,14 @@ export const TOAST_DURATION = 4000;
  * (3000) frontends.
  */
 export const USER_SERVICE_BASE_URL = 'http://localhost:8083/api';
+
+/**
+ * API Gateway base URL. Server-relative file/avatar URLs (e.g.
+ * /api/v1/files/view/...) are resolved against this so <img> tags never try
+ * to load them from the Vite dev server / static host port (which would
+ * 404 into a broken-image icon when the /api proxy is not in play).
+ */
+export const GATEWAY_BASE_URL = 'http://localhost:8765';
 
 /** localStorage key for the Dark/Light theme preference. */
 export const THEME_STORAGE_KEY = 'cardpro_theme';

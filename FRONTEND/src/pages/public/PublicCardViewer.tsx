@@ -8,6 +8,7 @@ import {
   PublicCardProfile,
   PublicCardResponse,
 } from '../../services/publicCardService';
+import { resolveAvatarUrl } from '../../services/fileService';
 
 type ViewState =
   | { status: 'loading' }
@@ -142,7 +143,11 @@ function CardContent({ card }: { card: PublicCardResponse }) {
   const profile = useMemo(() => parseProfileData(card.profileData), [card.profileData]);
   // blob: URLs only live in the browser session that created them — a public
   // visitor on another device can never load them, so fall back to initials.
-  const avatar = profile.avatarUrl && !profile.avatarUrl.startsWith('blob:') ? profile.avatarUrl : card.aiAvatarUrl || '';
+  // Server-relative /api/... paths are resolved against the API Gateway so
+  // the avatar renders even when the card is served from a different origin.
+  const avatar = resolveAvatarUrl(
+    profile.avatarUrl && !profile.avatarUrl.startsWith('blob:') ? profile.avatarUrl : card.aiAvatarUrl || ''
+  );
   const name = profile.fullName || card.slug || 'Your Name';
   const title = profile.title || '';
 
@@ -203,6 +208,7 @@ function CardContent({ card }: { card: PublicCardResponse }) {
         )}
         <h1 className="mt-4 text-2xl font-bold tracking-tight text-white">{name}</h1>
         {title && <p className="mt-1 text-sm font-medium text-fuchsia-300">{title}</p>}
+        {profile.tagline && <p className="mt-1 text-xs text-white/50">{profile.tagline}</p>}
         {profile.bio && <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/60">{profile.bio}</p>}
       </div>
 

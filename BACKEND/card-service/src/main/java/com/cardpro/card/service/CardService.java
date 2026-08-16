@@ -102,6 +102,7 @@ public class CardService {
                 .templateId(request.getTemplateId() != null ? request.getTemplateId() : "basic")
                 .profileData(convertToJsonString(request.getProfileData()))
                 .address(request.getAddress())
+                .gender(request.getGender())
                 .socialLinks(request.getSocialLinks() != null ? request.getSocialLinks() : new HashMap<>())
                 .build();
 
@@ -125,6 +126,9 @@ public class CardService {
         }
         if (request.getAddress() != null) {
             profile.setAddress(request.getAddress());
+        }
+        if (request.getGender() != null) {
+            profile.setGender(request.getGender());
         }
         if (request.getSocialLinks() != null) {
             profile.setSocialLinks(request.getSocialLinks());
@@ -252,6 +256,7 @@ public class CardService {
                 .profileData(profile.getProfileData())
                 .aiAvatarUrl(profile.getAiAvatarUrl())
                 .address(profile.getAddress())
+                .gender(profile.getGender())
                 .socialLinks(profile.getSocialLinks())
                 .removeWatermark(resolveRemoveWatermark(profile.getOwnerEmail()))
                 .build();
@@ -286,6 +291,7 @@ public class CardService {
                 .profileData(profile.getProfileData())
                 .aiAvatarUrl(profile.getAiAvatarUrl())
                 .address(profile.getAddress())
+                .gender(profile.getGender())
                 .socialLinks(profile.getSocialLinks())
                 .isActive(profile.getIsActive())
                 .build();

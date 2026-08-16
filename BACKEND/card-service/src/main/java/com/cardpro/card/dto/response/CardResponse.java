@@ -18,6 +18,7 @@ public class CardResponse {
     private String profileData;
     private String aiAvatarUrl;
     private String address;
+    private String gender;
     private Map<String, String> socialLinks;
     private Boolean isActive;
 }

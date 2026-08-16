@@ -36,6 +36,10 @@ app:
       lead-followup:
         max-tokens: 300
         temperature: 0.5
+    gemini:
+      api-key: ${GEMINI_API_KEY:dummy-gemini-key}
+      model: ${GEMINI_MODEL:gemini-1.5-flash-latest}
+      timeout-seconds: 30
     vision:
       removebg:
         api-key: ${REMOVEBG_API_KEY:dummy-removebg-key}

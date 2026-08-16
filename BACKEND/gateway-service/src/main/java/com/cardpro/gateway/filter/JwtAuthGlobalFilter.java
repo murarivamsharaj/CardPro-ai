@@ -59,6 +59,13 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
+        // 2d. Uploaded card avatars (GET /api/v1/files/view/...) are embedded in
+        //     the public card page and must load for unauthenticated visitors.
+        if (HttpMethod.GET.equals(request.getMethod())
+                && path.startsWith("/api/v1/files/view/")) {
+            return chain.filter(exchange);
+        }
+
         // 3. COMPLETELY BYPASS JWT VALIDATION FOR PUBLIC LEAD CAPTURE.
         //    POST /api/v1/leads is submitted by unauthenticated visitors through
         //    the "Contact Me" form on the public card viewer — the lead is

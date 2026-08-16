@@ -24,6 +24,10 @@ public class CreateCardRequest {
     @Size(max = 500, message = "Address must be at most 500 characters")
     private String address;
 
+    // Optional gender label (Male / Female / Custom / Prefer not to say)
+    @Size(max = 50, message = "Gender must be at most 50 characters")
+    private String gender;
+
     // Flexible social media: platform key ("linkedin", "github", "twitter", ...)
     // -> profile URL. Stored as JSONB on the card profile.
     private Map<String, String> socialLinks;

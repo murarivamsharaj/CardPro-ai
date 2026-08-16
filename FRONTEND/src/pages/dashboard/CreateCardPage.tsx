@@ -3,18 +3,22 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { createCard } from '../../store/slices/cardSlice';
 import { ImageUpload } from '../../components/common/ImageUpload';
+import { resolveAvatarUrl } from '../../services/fileService';
 import { TiltCard } from '../../components/common/TiltCard';
 import { notifySuccess, notifyError } from '../../store/useNotificationStore';
 import { extractPrimaryColor, buildCardGradient, DEFAULT_CARD_GRADIENT, isLightColor } from '../../utils/colorUtils';
+import { generateCardDetails } from '../../services/aiService';
 
 interface FormState {
   slug: string;
   templateId: string;
   address: string;
+  gender: string;
   socialLinks: Record<string, string>;
   profileData: {
     fullName: string;
     title: string;
+    tagline: string;
     bio: string;
     avatarUrl: string;
     phone: string;
@@ -26,6 +30,7 @@ const INITIAL_FORM: FormState = {
   slug: '',
   templateId: 'default',
   address: '',
+  gender: '',
   socialLinks: {
     linkedin: '',
     github: '',
@@ -38,6 +43,7 @@ const INITIAL_FORM: FormState = {
   profileData: {
     fullName: '',
     title: '',
+    tagline: '',
     bio: '',
     avatarUrl: '',
     phone: '',
@@ -59,6 +65,7 @@ const SOCIAL_FIELDS: { key: string; label: string; placeholder: string }[] = [
 const FIELD_LABELS: Record<string, string> = {
   fullName: 'Full Name',
   title: 'Professional Title',
+  tagline: 'Tagline',
   bio: 'Short Bio',
   phone: 'Phone Number',
   email: 'Email',
@@ -72,6 +79,11 @@ export const CreateCardPage: React.FC = () => {
   const [formData, setFormData] = useState<FormState>(INITIAL_FORM);
   const [gradient, setGradient] = useState<string>(DEFAULT_CARD_GRADIENT);
   const [lightText, setLightText] = useState(false);
+
+  // ✨ Magic Autofill
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -100,6 +112,38 @@ export const CreateCardPage: React.FC = () => {
 
   const avatarUrl = formData.profileData.avatarUrl;
 
+  /** Calls the ai-service and drops the suggestions into the editable fields. */
+  const handleMagicAutofill = async () => {
+    if (!aiPrompt.trim()) {
+      notifyError('Add keywords first', 'Describe your role or industry so the AI has something to work with.');
+      return;
+    }
+    setAiGenerating(true);
+    setAiError(null);
+    try {
+      const suggestions = await generateCardDetails(aiPrompt.trim());
+      setFormData((prev) => ({
+        ...prev,
+        profileData: {
+          ...prev.profileData,
+          title: suggestions.suggestedJobTitle,
+          tagline: suggestions.suggestedTagline,
+          bio: suggestions.suggestedBio,
+        },
+      }));
+      notifySuccess(
+        'Magic Autofill applied',
+        'Review the suggested title, tagline, and bio — edit them freely before saving.'
+      );
+    } catch (err) {
+      console.error('Magic Autofill failed:', err);
+      setAiError('Could not reach the AI service. Please try again.');
+      notifyError('Autofill failed', 'Could not reach the AI service. Please try again.');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
   // Smart Color Coordination: derive the card gradient from the uploaded logo/avatar.
   useEffect(() => {
     let cancelled = false;
@@ -111,7 +155,7 @@ export const CreateCardPage: React.FC = () => {
         }
         return;
       }
-      const hex = await extractPrimaryColor(avatarUrl);
+      const hex = await extractPrimaryColor(resolveAvatarUrl(avatarUrl));
       if (cancelled) return;
       setGradient(hex.startsWith('#') ? buildCardGradient(hex) : hex);
       setLightText(hex.startsWith('#') ? isLightColor(hex) : false);
@@ -159,6 +203,49 @@ export const CreateCardPage: React.FC = () => {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
         {/* Form */}
         <form onSubmit={handleSubmit} className="glass-panel space-y-6 p-6 lg:col-span-3 lg:p-8">
+          {/* ✨ Magic Autofill — AI-drafted title, tagline, and bio */}
+          <div className="rounded-2xl border border-fuchsia-400/25 bg-gradient-to-br from-violet-600/10 to-fuchsia-600/10 p-5">
+            <div className="mb-3 flex items-center gap-2.5">
+              <span className="text-xl">✨</span>
+              <div>
+                <p className="text-sm font-semibold text-white">Magic Autofill</p>
+                <p className="text-xs text-white/50">
+                  Drop in a few keywords and AI drafts your job title, tagline, and bio — keep or edit them.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <input
+                type="text"
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleMagicAutofill();
+                  }
+                }}
+                placeholder="e.g. sales manager, fintech, SaaS, 8 years experience"
+                disabled={aiGenerating}
+                className="input-field flex-1"
+              />
+              <button type="button" onClick={handleMagicAutofill} disabled={aiGenerating} className="btn-primary shrink-0">
+                {aiGenerating ? (
+                  <>
+                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                    </svg>
+                    Generating…
+                  </>
+                ) : (
+                  '✨ Generate'
+                )}
+              </button>
+            </div>
+            {aiError && <p className="mt-2 text-xs text-rose-300">{aiError}</p>}
+          </div>
+
           <div>
             <label className="mb-1.5 block text-sm font-medium text-white/70">Card URL Slug (Unique Identifier)</label>
             <div className="flex items-center overflow-hidden rounded-xl border border-white/15 bg-white/5 focus-within:border-fuchsia-400/60 focus-within:ring-2 focus-within:ring-fuchsia-400/25">
@@ -210,6 +297,22 @@ export const CreateCardPage: React.FC = () => {
               )}
             </div>
           ))}
+
+          <div className="border-t border-white/10 pt-6">
+            <label className="mb-1.5 block text-sm font-medium text-white/70">Gender</label>
+            <select
+              name="gender"
+              value={formData.gender}
+              onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+              className="input-field appearance-none"
+            >
+              <option value="">Prefer not to say</option>
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+              <option value="Custom">Custom</option>
+            </select>
+            <p className="mt-1 text-xs text-white/40">Optional — included on your digital card profile.</p>
+          </div>
 
           <div className="border-t border-white/10 pt-6">
             <label className="mb-1.5 block text-sm font-medium text-white/70">Address / Location</label>
@@ -272,7 +375,7 @@ export const CreateCardPage: React.FC = () => {
                 <div className="tilt-card-inner relative">
                   <div className="flex items-center gap-3">
                     {avatarUrl ? (
-                      <img src={avatarUrl} alt="Avatar" className="h-12 w-12 rounded-xl border border-white/40 object-cover shadow-lg" />
+                      <img src={resolveAvatarUrl(avatarUrl)} alt="Avatar" className="h-12 w-12 rounded-xl border border-white/40 object-cover shadow-lg" />
                     ) : (
                       <div className={`flex h-12 w-12 items-center justify-center rounded-xl border border-white/40 text-xl font-bold ${lightText ? 'text-black/60' : 'text-white/80'}`}>
                         {preview.name.charAt(0).toUpperCase()}

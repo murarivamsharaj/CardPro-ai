@@ -13,6 +13,8 @@ export interface PublicCardResponse {
   aiAvatarUrl?: string | null;
   /** Physical / office address stored on the card profile (optional). */
   address?: string | null;
+  /** Optional gender label (Male / Female / Custom / Prefer not to say). */
+  gender?: string | null;
   /** Platform key ("linkedin", "github", ...) → profile URL. */
   socialLinks?: Record<string, string> | null;
   /**
@@ -27,6 +29,7 @@ export interface PublicCardResponse {
 export interface PublicCardProfile {
   fullName?: string;
   title?: string;
+  tagline?: string;
   bio?: string;
   avatarUrl?: string;
   phone?: string;
