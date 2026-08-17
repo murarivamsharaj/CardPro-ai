@@ -5,6 +5,7 @@ import com.cardpro.auth.security.JwtAuthenticationFilter;
 import com.cardpro.auth.security.JwtAuthenticationProvider;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -37,25 +38,18 @@ public class SecurityConfig {
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(AbstractHttpConfigurer::disable)
-
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
                 .authenticationProvider(jwtAuthenticationProvider)
-
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authenticationEntryPoint())
                         .accessDeniedHandler(accessDeniedHandler()))
-
                 .authorizeHttpRequests(auth -> auth
-                        // Health and monitoring endpoints
-                        .requestMatchers(
-                                "/actuator/**",
-                                "/actuator/health/**",
-                                "/actuator/info/**"
-                        ).permitAll()
+                        // 1. Actuator Endpoints (Permit all actuator health, info, etc.)
+                        .requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
 
-                        // Swagger & OpenAPI documentation endpoints
+                        // 2. Swagger & OpenAPI docs
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
@@ -63,22 +57,22 @@ public class SecurityConfig {
                                 "/v3/api-docs"
                         ).permitAll()
 
-                        // Allow all pre-flight CORS requests
+                        // 3. Pre-flight CORS options & error dispatch
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/error").permitAll()
 
-                        // Public authentication endpoints
+                        // 4. Public auth routes
                         .requestMatchers(
                                 "/api/v1/auth/login/**",
                                 "/api/v1/auth/register/**",
-                                "/api/v1/auth/refresh/**",
-                                "/error"
+                                "/api/v1/auth/refresh/**"
                         ).permitAll()
 
-                        // Internal APIs
+                        // 5. Internal APIs
                         .requestMatchers("/api/v1/auth/internal/**")
                         .hasRole("INTERNAL_SERVICE")
 
-                        // Admin command center
+                        // 6. Admin APIs
                         .requestMatchers("/api/v1/auth/admin/**")
                         .hasRole("ADMIN")
 
@@ -86,8 +80,6 @@ public class SecurityConfig {
                         .anyRequest()
                         .authenticated()
                 )
-
-                // Register custom filters
                 .addFilterBefore(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterAfter(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
