@@ -98,3 +98,5 @@ management:
       enabled: false
     eureka:
       enabled: false
+    redis:
+      enabled: false
