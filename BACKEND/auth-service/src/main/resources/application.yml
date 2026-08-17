@@ -5,63 +5,61 @@ spring:
   application:
     name: auth-service
 
+  cloud:
+    discovery:
+      enabled: false
+      client:
+        composite-indicator:
+          enabled: false
+        health-indicator:
+          enabled: false
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/auth_db
-    username: postgres
-    password: murari
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/auth_db}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:murari}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        format_sql: false
 
-  # Disable Flyway for initial development
-  # Enable later when database scripts are ready
   flyway:
     enabled: false
 
-  # Redis configuration
-  # Keep this only if your auth module uses Redis
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
       timeout: 2000ms
 
-
-# Eureka Discovery Server
-# For local IntelliJ testing use localhost
+# Eureka Discovery Server (Disabled by default for cloud deployment)
 eureka:
   client:
+    enabled: ${EUREKA_ENABLED:false}
+    register-with-eureka: ${EUREKA_REGISTER:false}
+    fetch-registry: ${EUREKA_FETCH:false}
     service-url:
-      defaultZone: http://eureka:eureka123@localhost:8761/eureka/
+      defaultZone: ${EUREKA_SERVER_URL:http://eureka:eureka123@localhost:8761/eureka/}
   instance:
-    hostname: localhost       # 👈 Add this new line
-    prefer-ip-address: false  # 👈 Change this from 'true' to 'false'
-
+    prefer-ip-address: true
 
 # Application custom configuration
 app:
   jwt:
-    secret: CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890
-
-    # 24 hours
-    expiration-ms: 86400000
-
-    # 30 days refresh token
-    refresh-expiration-ms: 2592000000
-
-
+    secret: ${JWT_SECRET:CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+    refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
   internal:
-    api-key: cardpro-secret-key
+    api-key: ${INTERNAL_API_KEY:cardpro-secret-key}
 
-
-# SpringDoc Swagger UI Configuration (Explicitly added)
+# SpringDoc Swagger UI Configuration
 springdoc:
   api-docs:
     path: /v3/api-docs
@@ -72,19 +70,26 @@ springdoc:
     tags-sorter: alpha
     operations-sorter: alpha
 
-
 # Actuator monitoring
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics
-
   endpoint:
     health:
       show-details: always
+  health:
+    defaults:
+      enabled: true
+    discovery:
+      enabled: false
+    eureka:
+      enabled: false
+    redis:
+      enabled: false
 
 logging:
   level:
-    org.springframework.security: TRACE
-    org.springdoc: DEBUG
+    org.springframework.security: INFO
+    org.springdoc: INFO
