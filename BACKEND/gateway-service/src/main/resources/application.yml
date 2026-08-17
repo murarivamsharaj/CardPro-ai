@@ -5,9 +5,14 @@ spring:
   application:
     name: gateway-service
   cloud:
+    discovery:
+      enabled: false
+      client:
+        composite-indicator:
+          enabled: false
+        health-indicator:
+          enabled: false
     gateway:
-      #      default-filters:
-      #        - DeduplicateResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
       globalcors:
         cors-configurations:
           '[/**]':
@@ -27,8 +32,6 @@ spring:
             allowCredentials: true
 
       routes:
-        # payment-service is declared first so its /api/v1/payments/**
-        # predicates are matched before any catch-all route.
         - id: payment-service
           uri: lb://payment-service
           predicates:
@@ -74,18 +77,24 @@ app:
     secret: CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890
     expiration: 86400000
 
-#eureka services
 eureka:
   client:
     enabled: false
     register-with-eureka: false
     fetch-registry: false
 
-    management:
-      endpoint:
-        health:
-          show-details: always
-      endpoints:
-        web:
-          exposure:
-            include: health,info
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  health:
+    defaults:
+      enabled: true
+    discovery:
+      enabled: false
+    eureka:
+      enabled: false
