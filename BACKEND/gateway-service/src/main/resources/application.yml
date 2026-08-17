@@ -6,8 +6,8 @@ spring:
     name: gateway-service
   cloud:
     gateway:
-#      default-filters:
-#        - DeduplicateResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+      #      default-filters:
+      #        - DeduplicateResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
       globalcors:
         cors-configurations:
           '[/**]':
@@ -80,3 +80,12 @@ eureka:
     enabled: false
     register-with-eureka: false
     fetch-registry: false
+
+    management:
+      endpoint:
+        health:
+          show-details: always
+      endpoints:
+        web:
+          exposure:
+            include: health,info
