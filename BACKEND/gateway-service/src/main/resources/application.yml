@@ -77,10 +77,6 @@ app:
 #eureka services
 eureka:
   client:
-    enabled: ${EUREKA_ENABLED:false}
-    register-with-eureka: ${EUREKA_REGISTER:false}
-    fetch-registry: ${EUREKA_FETCH:false}
-    service-url:
-      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@${EUREKA_HOST:discovery-service}:8761/eureka/
-  instance:
-    prefer-ip-address: true
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
