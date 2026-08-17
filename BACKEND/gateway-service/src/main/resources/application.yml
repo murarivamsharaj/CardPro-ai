@@ -76,6 +76,7 @@ app:
 
 eureka:
   client:
+    enabled: ${EUREKA_ENABLED:false} # Defaults to false on Railway, you can override to true locally/in docker-compose
     service-url:
       defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@${EUREKA_HOST:discovery-service}:8761/eureka/
   instance:
