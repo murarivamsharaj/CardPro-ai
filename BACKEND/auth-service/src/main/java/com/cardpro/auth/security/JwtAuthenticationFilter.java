@@ -29,15 +29,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getRequestURI();
 
-        // Completely bypass JWT validation for Swagger, public auth endpoints, AND internal APIs
-        return path.startsWith("/swagger-ui") ||
+        // Completely bypass JWT validation for actuator, public auth endpoints, swagger, and internal APIs
+        return path.startsWith("/actuator") ||
+                path.startsWith("/error") ||
+                path.startsWith("/swagger-ui") ||
                 path.startsWith("/v3/api-docs") ||
                 path.startsWith("/swagger-resources") ||
                 path.startsWith("/webjars") ||
                 path.startsWith("/api/v1/auth/login") ||
                 path.startsWith("/api/v1/auth/register") ||
                 path.startsWith("/api/v1/auth/refresh") ||
-                path.startsWith("/api/v1/auth/internal"); // <-- Added this line
+                path.startsWith("/api/v1/auth/internal");
     }
 
     @Override

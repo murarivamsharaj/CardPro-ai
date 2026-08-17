@@ -13,6 +13,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,8 +35,8 @@ public class SecurityConfig {
             @Lazy JwtAuthenticationProvider jwtAuthenticationProvider) throws Exception {
 
         http
-                .csrf(csrf -> csrf.disable())
-                .cors(cors -> cors.disable())
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(AbstractHttpConfigurer::disable)
 
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -47,6 +48,12 @@ public class SecurityConfig {
                         .accessDeniedHandler(accessDeniedHandler()))
 
                 .authorizeHttpRequests(auth -> auth
+                        // Health and monitoring endpoints
+                        .requestMatchers(
+                                "/actuator/**",
+                                "/actuator/health/**",
+                                "/actuator/info/**"
+                        ).permitAll()
 
                         // Swagger & OpenAPI documentation endpoints
                         .requestMatchers(
@@ -59,25 +66,19 @@ public class SecurityConfig {
                         // Allow all pre-flight CORS requests
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                        // Public APIs (Wildcards appended to guarantee path matching)
+                        // Public authentication endpoints
                         .requestMatchers(
-                                "/api/v1/auth/login", "/api/v1/auth/login/**",
-                                "/api/v1/auth/register", "/api/v1/auth/register/**",
-                                "/api/v1/auth/refresh", "/api/v1/auth/refresh/**",
+                                "/api/v1/auth/login/**",
+                                "/api/v1/auth/register/**",
+                                "/api/v1/auth/refresh/**",
                                 "/error"
-                        ).permitAll()
-
-                        // Health and monitoring
-                        .requestMatchers(
-                                "/actuator/health",
-                                "/actuator/info"
                         ).permitAll()
 
                         // Internal APIs
                         .requestMatchers("/api/v1/auth/internal/**")
                         .hasRole("INTERNAL_SERVICE")
 
-                        // Admin command center — user management & platform config
+                        // Admin command center
                         .requestMatchers("/api/v1/auth/admin/**")
                         .hasRole("ADMIN")
 
