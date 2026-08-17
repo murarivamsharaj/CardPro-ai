@@ -74,6 +74,7 @@ app:
     secret: CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890
     expiration: 86400000
 
+#eureka services
 eureka:
   client:
     enabled: ${EUREKA_ENABLED:false} # Defaults to false on Railway, you can override to true locally/in docker-compose
