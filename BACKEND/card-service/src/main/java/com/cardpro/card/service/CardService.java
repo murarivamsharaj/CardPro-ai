@@ -259,6 +259,7 @@ public class CardService {
                 .gender(profile.getGender())
                 .socialLinks(profile.getSocialLinks())
                 .removeWatermark(resolveRemoveWatermark(profile.getOwnerEmail()))
+                .premiumTemplatesUnlocked(profile.isPremiumTemplatesUnlocked())
                 .build();
     }
 
@@ -294,6 +295,8 @@ public class CardService {
                 .gender(profile.getGender())
                 .socialLinks(profile.getSocialLinks())
                 .isActive(profile.getIsActive())
+                .premiumTemplatesUnlocked(profile.isPremiumTemplatesUnlocked())
+                .leadCredits(profile.getLeadCredits())
                 .build();
     }
 

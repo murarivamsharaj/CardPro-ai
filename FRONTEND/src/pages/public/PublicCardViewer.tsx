@@ -139,6 +139,31 @@ const LEGACY_SOCIAL_FIELDS: Record<string, string[]> = {
   whatsapp: ['whatsapp'],
 };
 
+/**
+ * Maps a card's templateId to the CSS classes styling the hero card panel.
+ * Matches the template gradient palette from the Create Card editor:
+ * Classic / Minimal / Bold are free; Aurora / Neon / Gold are premium designs.
+ * Unknown or missing ids fall back to the default glass-panel look (empty string).
+ */
+function getTemplateStyles(templateId?: string): string {
+  switch (templateId) {
+    case 'default':
+      return 'bg-[linear-gradient(135deg,#312e81,#7c3aed)] border-white/20 shadow-xl shadow-indigo-900/40';
+    case 'minimal':
+      return 'bg-[linear-gradient(135deg,#1e293b,#475569)] border-white/20 shadow-xl shadow-slate-900/40';
+    case 'bold':
+      return 'bg-[linear-gradient(135deg,#be123c,#f97316)] border-white/20 shadow-xl shadow-rose-900/40';
+    case 'aurora':
+      return 'bg-[linear-gradient(135deg,#6d28d9,#d946ef)] border-white/25 shadow-xl shadow-fuchsia-900/50';
+    case 'neon':
+      return 'bg-[linear-gradient(135deg,#0f172a,#22d3ee)] border-white/25 shadow-xl shadow-cyan-900/50';
+    case 'gold':
+      return 'bg-[linear-gradient(135deg,#78350f,#d97706)] border-amber-300/30 shadow-xl shadow-amber-900/50';
+    default:
+      return '';
+  }
+}
+
 function CardContent({ card }: { card: PublicCardResponse }) {
   const profile = useMemo(() => parseProfileData(card.profileData), [card.profileData]);
   // blob: URLs only live in the browser session that created them — a public
@@ -150,6 +175,10 @@ function CardContent({ card }: { card: PublicCardResponse }) {
   );
   const name = profile.fullName || card.slug || 'Your Name';
   const title = profile.title || '';
+
+  // The selected template styles the hero card panel; the template gradient
+  // takes priority over any avatar influence so premium designs stay visible.
+  const templateClasses = getTemplateStyles(card.templateId ?? undefined);
 
   const skills = useMemo(
     () => (Array.isArray(profile.skills) ? (profile.skills as string[]).filter(Boolean).slice(0, 12) : []),
@@ -197,8 +226,19 @@ function CardContent({ card }: { card: PublicCardResponse }) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Profile header */}
-      <div className="glass-panel flex flex-col items-center px-6 py-8 text-center">
+      {/* Profile header — styled by the selected template */}
+      <div
+        className={`relative isolate overflow-hidden flex flex-col items-center rounded-2xl px-6 py-8 text-center ${
+          templateClasses || 'glass-panel'
+        }`}
+      >
+        {/* Depth overlays so the template gradient reads as a designed card */}
+        {templateClasses && (
+          <>
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.25),transparent_55%)]" />
+            <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_80%_100%,rgba(0,0,0,0.35),transparent_60%)]" />
+          </>
+        )}
         {avatar ? (
           <img src={avatar} alt={name} className="h-24 w-24 rounded-full border-2 border-white/20 object-cover shadow-xl" />
         ) : (

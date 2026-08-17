@@ -16,6 +16,8 @@ interface CardItem {
   profileData?: string;
   aiAvatarUrl?: string;
   isActive?: boolean;
+  premiumTemplatesUnlocked?: boolean;
+  leadCredits?: number;
 }
 
 interface ProfileData {

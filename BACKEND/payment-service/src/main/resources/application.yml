@@ -46,9 +46,11 @@ eureka:
 app:
   internal:
     api-key: ${INTERNAL_API_KEY:cardpro-local-secret}
+  jwt:
+    secret: ${JWT_SECRET:CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
   razorpay:
-    key-id: ${RAZORPAY_KEY_ID:dummy-razorpay-id}
-    key-secret: ${RAZORPAY_KEY_SECRET:dummy-razorpay-secret}
+    key-id: ${RAZORPAY_KEY_ID:rzp_test_TQnTopgwwCYbNN}
+    key-secret: ${RAZORPAY_KEY_SECRET:9mEw4VScMpxSv7qdqHngi0D8}
     webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:dummy-webhook-secret}
     currency: INR
 

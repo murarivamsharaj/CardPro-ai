@@ -25,4 +25,8 @@ public class PublicCardResponse {
      */
     @Builder.Default
     private boolean removeWatermark = false;
+
+    /** True when the owner has unlocked the Premium Templates entitlement. */
+    @Builder.Default
+    private boolean premiumTemplatesUnlocked = false;
 }

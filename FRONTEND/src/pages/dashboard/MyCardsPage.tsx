@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchMyCards, updateMyCard, deleteMyCard } from '../../store/slices/cardSlice';
 import { SkeletonCard } from '../../components/common/Skeleton';
 import { ImageUpload } from '../../components/common/ImageUpload';
+import { TemplateGallery } from '../../components/common/TemplateGallery';
 import { resolveAvatarUrl } from '../../services/fileService';
 import { notifySuccess, notifyError } from '../../store/useNotificationStore';
 import { extractPrimaryColor, buildCardGradient, DEFAULT_CARD_GRADIENT, isLightColor } from '../../utils/colorUtils';
@@ -20,6 +21,8 @@ interface CardItem {
   gender?: string;
   socialLinks?: Record<string, string>;
   isActive?: boolean;
+  premiumTemplatesUnlocked?: boolean;
+  leadCredits?: number;
 }
 
 interface ProfileData {
@@ -402,9 +405,13 @@ function EditCardModal({
 }) {
   const dispatch = useDispatch<any>();
   const profile = useMemo(() => parseProfile(card), [card]);
+  // The card being edited carries the purchased-entitlement flags from the
+  // API response (state.card.cards), so premium gating is derived from it.
+  const premiumTemplatesUnlocked = !!card.premiumTemplatesUnlocked;
 
   const [form, setForm] = useState({
     slug: card.slug || '',
+    templateId: card.templateId || 'default',
     fullName: profile.fullName || '',
     title: profile.title || '',
     tagline: profile.tagline || '',
@@ -442,6 +449,7 @@ function EditCardModal({
     const result = await dispatch(
       updateMyCard({
         slug: form.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+        templateId: form.templateId,
         address: form.address.trim() || undefined,
         gender: form.gender || undefined,
         socialLinks: Object.keys(socialLinks).length > 0 ? socialLinks : undefined,
@@ -494,6 +502,14 @@ function EditCardModal({
             value={form.slug}
             onChange={handleChange}
             className="input-field"
+          />
+        </div>
+        <div>
+          <p className="mb-1.5 block text-sm font-medium text-white/70">Card Template</p>
+          <TemplateGallery
+            selectedTemplateId={form.templateId}
+            premiumTemplatesUnlocked={premiumTemplatesUnlocked}
+            onSelect={(templateId) => setForm((prev) => ({ ...prev, templateId }))}
           />
         </div>
         <ImageUpload

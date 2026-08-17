@@ -73,6 +73,16 @@ public class CardProfile {
     @Builder.Default
     private Boolean isActive = true;
 
+    /** Set true when the user purchases the Premium Templates entitlement. */
+    @Column(name = "premium_templates_unlocked", nullable = false)
+    @Builder.Default
+    private boolean premiumTemplatesUnlocked = false;
+
+    /** Consumable lead-credit balance (each Lead Pack purchase adds 100 credits). */
+    @Column(name = "lead_credits", nullable = false)
+    @Builder.Default
+    private int leadCredits = 0;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

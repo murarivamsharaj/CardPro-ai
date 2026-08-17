@@ -26,6 +26,13 @@ spring:
             allowCredentials: true
 
       routes:
+        # payment-service is declared first so its /api/v1/payments/**
+        # predicates are matched before any catch-all route.
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/v1/payments/**
+
         - id: auth-service
           uri: lb://auth-service
           predicates:

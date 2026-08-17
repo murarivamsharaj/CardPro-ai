@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { createCard } from '../../store/slices/cardSlice';
+import { createCard, fetchMyCards } from '../../store/slices/cardSlice';
 import { ImageUpload } from '../../components/common/ImageUpload';
 import { resolveAvatarUrl } from '../../services/fileService';
 import { TiltCard } from '../../components/common/TiltCard';
 import { notifySuccess, notifyError } from '../../store/useNotificationStore';
 import { extractPrimaryColor, buildCardGradient, DEFAULT_CARD_GRADIENT, isLightColor } from '../../utils/colorUtils';
 import { generateCardDetails } from '../../services/aiService';
+import { TemplateGallery } from '../../components/common/TemplateGallery';
+import { templateGradient } from '../../utils/templateConstants';
 
 interface FormState {
   slug: string;
@@ -71,10 +73,19 @@ const FIELD_LABELS: Record<string, string> = {
   email: 'Email',
 };
 
+
 export const CreateCardPage: React.FC = () => {
   const dispatch = useDispatch<any>();
   const navigate = useNavigate();
   const { loading, error } = useSelector((state: any) => state.card);
+  // The user's own card carries the purchased-entitlement flags (one card per
+  // user is normalized into an array by fetchMyCards).
+  const currentCard = useSelector((state: any) => state.card.cards?.[0] || null);
+  const premiumTemplatesUnlocked = !!currentCard?.premiumTemplatesUnlocked;
+
+  useEffect(() => {
+    dispatch(fetchMyCards());
+  }, [dispatch]);
 
   const [formData, setFormData] = useState<FormState>(INITIAL_FORM);
   const [gradient, setGradient] = useState<string>(DEFAULT_CARD_GRADIENT);
@@ -150,7 +161,8 @@ export const CreateCardPage: React.FC = () => {
     const apply = async () => {
       if (!avatarUrl) {
         if (!cancelled) {
-          setGradient(DEFAULT_CARD_GRADIENT);
+          // No avatar → the selected template's own gradient styles the preview.
+          setGradient(templateGradient(formData.templateId));
           setLightText(false);
         }
         return;
@@ -164,7 +176,7 @@ export const CreateCardPage: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [avatarUrl]);
+  }, [avatarUrl, formData.templateId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,6 +271,16 @@ export const CreateCardPage: React.FC = () => {
                 className="w-full bg-transparent px-4 py-2.5 text-sm text-white placeholder-white/35 outline-none"
               />
             </div>
+          </div>
+
+          {/* Card template picker — premium designs gate behind the Store purchase */}
+          <div>
+            <p className="mb-1.5 block text-sm font-medium text-white/70">Card Template</p>
+            <TemplateGallery
+              selectedTemplateId={formData.templateId}
+              premiumTemplatesUnlocked={premiumTemplatesUnlocked}
+              onSelect={(templateId) => setFormData({ ...formData, templateId })}
+            />
           </div>
 
           <ImageUpload

@@ -1,6 +1,7 @@
 package com.cardpro.payment.config;
 
 import com.cardpro.payment.security.InternalApiKeyFilter;
+import com.cardpro.payment.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,6 +17,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final InternalApiKeyFilter internalApiKeyFilter;
 
     @Bean
@@ -28,6 +30,9 @@ public class SecurityConfig {
                     .requestMatchers("/api/v1/payments/internal/**").permitAll()
                 .anyRequest().authenticated()
             )
+            // Browser requests arrive via the gateway with the original Bearer
+            // token intact — validate it so .authenticated() passes.
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
