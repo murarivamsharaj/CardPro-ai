@@ -80,10 +80,7 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-database-postgresql</artifactId>
-        </dependency>
+
 
         <!-- OpenAPI / Swagger UI for Spring Boot 3 -->
         <dependency>
