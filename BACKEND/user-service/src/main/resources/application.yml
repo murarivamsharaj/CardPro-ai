@@ -1,85 +1,60 @@
 server:
-  port: ${PORT:8083}
+  port: ${PORT:8081}
 
 spring:
+  main:
+    allow-bean-definition-overriding: true
   application:
     name: user-service
-
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/user_db}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:murari}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
 
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     open-in-view: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
 
-  # Flyway-managed schema (mirrors card-service/lead-service). Migrations live
-  # in src/main/resources/db/migration; ddl-auto stays on `update` so existing
-  # environments keep booting even if a migration is ever out of date.
   flyway:
-    enabled: true
-    # The `users` table already exists in every environment (it was created by
-    # Hibernate ddl-auto before Flyway was adopted) with no schema-history
-    # table. baseline-on-migrate seeds the history and marks V1 (the
-    # pre-existing schema) as the baseline, so only V2+ actually run against
-    # those databases. On a fresh/empty database the baseline is skipped and
-    # V1 + V2 run normally.
-    baseline-on-migrate: true
-    baseline-version: 1
-    locations: classpath:db/migration
+    enabled: false
 
-  # RabbitMQ (for publishing email-notification preference events)
-  # Defaults match the canonical cardpro stack (BACKEND/docker-compose.yml).
-  rabbitmq:
-    host: ${RABBITMQ_HOST:localhost}
-    port: ${RABBITMQ_PORT:5672}
-    username: ${RABBITMQ_USERNAME:cardpro}
-    password: ${RABBITMQ_PASSWORD:cardpro}
-
-app:
-  jwt:
-    # Shared with auth-service so the same token validates everywhere
-    secret: CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890
-  internal:
-    # Shared with card-service/lead-service for inter-service /internal calls
-    api-key: ${INTERNAL_API_KEY:cardpro-secret-key}
-
-# Razorpay (CardPro Pro subscription) — TEST keys, overridable via env vars
-razorpay:
-  key:
-    id: ${RAZORPAY_KEY_ID:rzp_test_TPi0wBlkI3xiuG}
-    secret: ${RAZORPAY_KEY_SECRET:V7jK6wf07WMMhYlUtMz1udyW}
+  cloud:
+    discovery:
+      enabled: false
 
 eureka:
   client:
-    service-url:
-      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@localhost:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
-  instance:
-    prefer-ip-address: true
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
 
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    path: /swagger-ui.html
-    enabled: true
+app:
+  jwt:
+    secret: ${JWT_SECRET:CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
+  internal:
+    api-key: ${INTERNAL_API_KEY:cardpro-secret-key}
 
-# Actuator monitoring
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info
   endpoint:
     health:
       show-details: always
+  health:
+    discovery:
+      enabled: false
+    eureka:
+      enabled: false
+    redis:
+      enabled: false
+    rabbit:
+      enabled: false
