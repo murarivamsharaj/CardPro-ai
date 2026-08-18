@@ -29,58 +29,49 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
 
-        // 1. COMPLETELY BYPASS JWT VALIDATION FOR PUBLIC AUTH ROUTES
-        if (path.startsWith("/api/v1/auth/")) {
+        // 0. LET ALL CORS PREFLIGHT (OPTIONS) REQUESTS PASS THROUGH FIRST
+        if (HttpMethod.OPTIONS.equals(request.getMethod())) {
             return chain.filter(exchange);
         }
 
-        // 2. COMPLETELY BYPASS JWT VALIDATION FOR THE PUBLIC CARD VIEWER.
-        //    GET /api/v1/cards/{slug} serves an unauthenticated public profile
-        //    (e.g. the frontend route /c/muari-card). Only the bare slug lookup
-        //    is public — /me and nested routes still require a token.
+        // 1. COMPLETELY BYPASS JWT VALIDATION FOR PUBLIC AUTH & HEALTH ROUTES
+        if (path.startsWith("/api/v1/auth/") || path.startsWith("/actuator/")) {
+            return chain.filter(exchange);
+        }
+
+        // 2. COMPLETELY BYPASS JWT VALIDATION FOR THE PUBLIC CARD VIEWER
         if (HttpMethod.GET.equals(request.getMethod())
                 && path.matches("^/api/v1/cards/[^/]+$")
                 && !path.endsWith("/me")) {
             return chain.filter(exchange);
         }
 
-        // 2b. Dedicated public slug routes — /api/v1/cards/public/{slug} and
-        //     /api/v1/cards/slug/{slug} are also unauthenticated.
+        // 2b. Dedicated public slug routes
         if (HttpMethod.GET.equals(request.getMethod())
                 && (path.startsWith("/api/v1/cards/public/")
-                    || path.startsWith("/api/v1/cards/slug/"))) {
+                || path.startsWith("/api/v1/cards/slug/"))) {
             return chain.filter(exchange);
         }
 
-        // 2c. Public analytics event ingestion from the card viewer
-        //     (PAGE_VIEW, SOCIAL_CLICK, BUTTON_CLICK, VCF_DOWNLOAD).
+        // 2c. Public analytics event ingestion
         if (HttpMethod.POST.equals(request.getMethod())
                 && (path.equals("/api/v1/analytics/events") || path.equals("/api/v1/analytics/events/"))) {
             return chain.filter(exchange);
         }
 
-        // 2d. Uploaded card avatars (GET /api/v1/files/view/...) are embedded in
-        //     the public card page and must load for unauthenticated visitors.
+        // 2d. Uploaded card avatars embedded in public card page
         if (HttpMethod.GET.equals(request.getMethod())
                 && path.startsWith("/api/v1/files/view/")) {
             return chain.filter(exchange);
         }
 
-        // 3. COMPLETELY BYPASS JWT VALIDATION FOR PUBLIC LEAD CAPTURE.
-        //    POST /api/v1/leads is submitted by unauthenticated visitors through
-        //    the "Contact Me" form on the public card viewer — the lead is
-        //    attributed via the profileId in the request body, not the caller.
+        // 3. COMPLETELY BYPASS JWT VALIDATION FOR PUBLIC LEAD CAPTURE
         if (HttpMethod.POST.equals(request.getMethod())
                 && (path.equals("/api/v1/leads") || path.equals("/api/v1/leads/"))) {
             return chain.filter(exchange);
         }
 
-        // 4. Let CORS preflight through without a token
-        if (HttpMethod.OPTIONS.equals(request.getMethod())) {
-            return chain.filter(exchange);
-        }
-
-        // 5. Token validation for other protected routes
+        // 4. Token validation for protected routes
         if (!request.getHeaders().containsKey("Authorization")) {
             return onError(exchange, "Missing Authorization Header", HttpStatus.UNAUTHORIZED);
         }
@@ -92,8 +83,7 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
 
         String token = authHeader.substring(7);
 
-        // 6. Validate the JWT and extract the user identity so downstream services
-        //    (e.g. analytics, leads) can resolve the caller via X-User-Id.
+        // 5. Validate the JWT and forward identity headers downstream
         Claims claims;
         try {
             claims = jwtUtil.validateToken(token);
