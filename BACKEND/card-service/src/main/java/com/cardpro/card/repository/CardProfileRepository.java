@@ -14,25 +14,28 @@ import java.util.UUID;
 @Repository
 public interface CardProfileRepository extends JpaRepository<CardProfile, UUID> {
 
-    Optional<CardProfile> findBySlug(String slug);
-
+    // Single card by user ID (used by CardService .orElseThrow())
     Optional<CardProfile> findByUserId(UUID userId);
 
-    /**
-     * Every card owned by a user. The platform currently models one card per
-     * user, but analytics is written against a list so it keeps working (and
-     * sums correctly) if multi-card accounts are ever enabled.
-     */
+    // Multiple cards by user ID (used by AnalyticsService)
     List<CardProfile> findAllByUserId(UUID userId);
 
+    // Lookup by public slug
+    Optional<CardProfile> findBySlug(String slug);
+
+    // Slug existence check
     boolean existsBySlug(String slug);
 
-    Page<CardProfile> findBySlugContainingIgnoreCase(String keyword, Pageable pageable);
+    // Search cards with pagination (used by CardService admin/search endpoints)
+    Page<CardProfile> findBySlugContainingIgnoreCase(String slug, Pageable pageable);
 
-    /** Admin metric: how many cards are currently active. */
+    // Plain search list
+    List<CardProfile> findBySlugContainingIgnoreCase(String slug);
+
+    // Admin count active cards
     long countByIsActiveTrue();
 
-    /** Admin metric: sum of the cumulative view counters across all cards. */
+    // Admin total views calculation
     @Query("SELECT COALESCE(SUM(c.viewCount), 0) FROM CardProfile c")
     long sumViewCount();
 }
