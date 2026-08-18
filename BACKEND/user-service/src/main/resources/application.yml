@@ -6,6 +6,7 @@ spring:
     allow-bean-definition-overriding: true
   application:
     name: user-service
+
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
@@ -24,6 +25,11 @@ spring:
 
   flyway:
     enabled: false
+
+  rabbitmq:
+    listener:
+      simple:
+        auto-startup: false
 
   cloud:
     discovery:
@@ -57,4 +63,6 @@ management:
     redis:
       enabled: false
     rabbit:
+      enabled: false
+    amqp:
       enabled: false
