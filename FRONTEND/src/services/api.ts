@@ -10,8 +10,7 @@ declare module 'axios' {
 }
 
 const api = axios.create({
-  // Empty baseURL so it uses the Vite proxy configured in vite.config.ts
-  baseURL: '',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://cardpro-ai.onrender.com',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -36,7 +35,7 @@ api.interceptors.response.use(
   (error) => {
     // Public endpoints (skipAuthRedirect) handle 401 themselves — never force login
     if (error.response && error.response.status === 401 && !error.config?.skipAuthRedirect) {
-      console.error('401 Unauthorized caught by interceptor. Redirecting to login...', error.config.url);
+      console.error('401 Unauthorized caught by interceptor. Redirecting to login...', error.config?.url);
       localStorage.removeItem('token');
       // Use replace to prevent back-button loops
       window.location.replace('/login');
