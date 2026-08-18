@@ -67,24 +67,22 @@ public class CardService {
     }
 
     /**
-     * Updated to return a list of cards belonging to the user,
+     * Returns a list of cards belonging to the user using findAllByUserId,
      * preventing the NonUniqueResultException crash when a user owns multiple cards.
      */
     public List<CardResponse> getCardsByUserId(String userId) {
-        List<CardProfile> profiles = cardProfileRepository.findByUserId(UUID.fromString(userId));
+        List<CardProfile> profiles = cardProfileRepository.findAllByUserId(UUID.fromString(userId));
         if (profiles.isEmpty()) {
             throw new CardNotFoundException();
         }
         return profiles.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
-    // Maintained for backwards compatibility if a single card is strictly expected elsewhere
+    // Maintained for backwards compatibility using Optional findByUserId
     public CardResponse getCardByUserId(String userId) {
-        List<CardProfile> profiles = cardProfileRepository.findByUserId(UUID.fromString(userId));
-        if (profiles.isEmpty()) {
-            throw new CardNotFoundException();
-        }
-        return mapToResponse(profiles.get(0));
+        CardProfile profile = cardProfileRepository.findByUserId(UUID.fromString(userId))
+                .orElseThrow(CardNotFoundException::new);
+        return mapToResponse(profile);
     }
 
     public CardResponse getCardById(UUID profileId) {
@@ -122,12 +120,12 @@ public class CardService {
     }
 
     public CardResponse updateCard(String userId, String ownerEmail, UpdateCardRequest request) {
-        // Fetch the user's cards safely
-        List<CardProfile> profiles = cardProfileRepository.findByUserId(UUID.fromString(userId));
+        // Fetch user's cards safely using findAllByUserId
+        List<CardProfile> profiles = cardProfileRepository.findAllByUserId(UUID.fromString(userId));
         if (profiles.isEmpty()) {
             throw new CardNotFoundException();
         }
-        CardProfile profile = profiles.get(0); // Update the primary/first card or adjust if cardId is provided
+        CardProfile profile = profiles.get(0); // Updates the primary/first card
 
         if (request.getSlug() != null) {
             slugService.validateSlug(request.getSlug());
@@ -161,7 +159,7 @@ public class CardService {
     }
 
     public void deleteCard(String userId) {
-        List<CardProfile> profiles = cardProfileRepository.findByUserId(UUID.fromString(userId));
+        List<CardProfile> profiles = cardProfileRepository.findAllByUserId(UUID.fromString(userId));
         if (profiles.isEmpty()) {
             throw new CardNotFoundException();
         }
