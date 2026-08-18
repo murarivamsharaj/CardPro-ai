@@ -18,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,38 +37,56 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
         try {
-            String header = request.getHeader("Authorization");
-            if (header != null && header.startsWith("Bearer ")) {
-                String token = header.substring(7);
+            // 1. First, check if the Gateway already authenticated and forwarded user identity headers
+            String gatewayUserId = request.getHeader("X-User-Id");
+            if (gatewayUserId != null && !gatewayUserId.isBlank() && SecurityContextHolder.getContext().getAuthentication() == null) {
+                String email = request.getHeader("X-User-Email");
+                String rolesHeader = request.getHeader("X-User-Roles");
 
-                // Parse claims using the same secret key as auth-service
-                Claims claims = Jwts.parser()
-                        .verifyWith(secretKey)
-                        .build()
-                        .parseSignedClaims(token)
-                        .getPayload();
-
-                String userId = claims.getSubject();
-                String email = claims.get("email", String.class);
-
-                @SuppressWarnings("unchecked")
-                List<String> roles = claims.get("roles", List.class);
-
-                if (userId != null && roles != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    // Convert role strings to Spring Security GrantedAuthorities
-                    List<SimpleGrantedAuthority> authorities = roles.stream()
+                List<SimpleGrantedAuthority> authorities;
+                if (rolesHeader != null && !rolesHeader.isBlank()) {
+                    authorities = Arrays.stream(rolesHeader.split(","))
+                            .map(String::trim)
                             .map(SimpleGrantedAuthority::new)
                             .collect(Collectors.toList());
+                } else {
+                    authorities = List.of(new SimpleGrantedAuthority("ROLE_USER"));
+                }
 
-                    // Create authentication object. The principal carries both the
-                    // UUID subject (getName()) and the email claim so controllers
-                    // can attribute cards to their owner's user-service profile.
-                    UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                            new CardUserPrincipal(userId, email), null, authorities
-                    );
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                        new CardUserPrincipal(gatewayUserId, email), null, authorities
+                );
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+            // 2. Fallback: Parse raw Authorization header if hit directly or gateway headers are absent
+            else if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                String header = request.getHeader("Authorization");
+                if (header != null && header.startsWith("Bearer ")) {
+                    String token = header.substring(7);
 
-                    // Set it into Spring Security Context so .hasRole() and .authenticated() pass!
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    Claims claims = Jwts.parser()
+                            .verifyWith(secretKey)
+                            .build()
+                            .parseSignedClaims(token)
+                            .getPayload();
+
+                    String userId = claims.getSubject();
+                    String email = claims.get("email", String.class);
+
+                    @SuppressWarnings("unchecked")
+                    List<String> roles = claims.get("roles", List.class);
+
+                    if (userId != null && roles != null) {
+                        List<SimpleGrantedAuthority> authorities = roles.stream()
+                                .map(SimpleGrantedAuthority::new)
+                                .collect(Collectors.toList());
+
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                                new CardUserPrincipal(userId, email), null, authorities
+                        );
+
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    }
                 }
             }
         } catch (Exception e) {
