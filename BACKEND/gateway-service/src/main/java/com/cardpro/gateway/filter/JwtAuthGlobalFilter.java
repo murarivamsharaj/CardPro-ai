@@ -39,9 +39,10 @@ public class JwtAuthGlobalFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        // 2. COMPLETELY BYPASS JWT VALIDATION FOR THE PUBLIC CARD VIEWER
+        // 2. COMPLETELY BYPASS JWT VALIDATION FOR THE PUBLIC CARD VIEWER (EXCEPT /me)
         if (HttpMethod.GET.equals(request.getMethod())
                 && path.matches("^/api/v1/cards/[^/]+$")
+                && !path.equals("/api/v1/cards/me")
                 && !path.endsWith("/me")) {
             return chain.filter(exchange);
         }
