@@ -32,49 +32,63 @@ spring:
             allowCredentials: true
 
       routes:
-        - id: payment-service
-          uri: lb://payment-service
-          predicates:
-            - Path=/api/v1/payments/**
-
+        # Auth Service Route
         - id: auth-service
           uri: ${AUTH_SERVICE_URL:https://auth-service-lcfr.onrender.com}
           predicates:
             - Path=/api/v1/auth/**
 
+        # Card Service Core Routes
         - id: card-service
-          uri: lb://card-service
+          uri: ${CARD_SERVICE_URL:https://card-service-3a7a.onrender.com}
           predicates:
-            - Path=/api/v1/cards/**
+            - Path=/api/v1/cards/**, /api/v1/public/cards/**
 
-        - id: product-service
-          uri: lb://product-service
-          predicates:
-            - Path=/api/v1/products/**
-
+        # Card Analytics Route
         - id: card-analytics
-          uri: lb://card-service
+          uri: ${CARD_SERVICE_URL:https://card-service-3a7a.onrender.com}
           predicates:
             - Path=/api/v1/analytics/**
 
+        # Card Files / Uploads Route
         - id: card-files
-          uri: lb://card-service
+          uri: ${CARD_SERVICE_URL:https://card-service-3a7a.onrender.com}
           predicates:
             - Path=/api/v1/files/**
 
-        - id: ai-service
-          uri: lb://ai-service
+        # User Service Route
+        - id: user-service
+          uri: ${USER_SERVICE_URL:http://localhost:8081}
           predicates:
-            - Path=/api/v1/ai/**
+            - Path=/api/v1/users/**
 
+        # Payment Service Route
+        - id: payment-service
+          uri: ${PAYMENT_SERVICE_URL:http://localhost:8083}
+          predicates:
+            - Path=/api/v1/payments/**
+
+        # Lead Service Route
         - id: lead-service
-          uri: lb://lead-service
+          uri: ${LEAD_SERVICE_URL:http://localhost:8085}
           predicates:
             - Path=/api/v1/leads/**
 
+        # Product Service Route
+        - id: product-service
+          uri: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+          predicates:
+            - Path=/api/v1/products/**
+
+        # AI Service Route
+        - id: ai-service
+          uri: ${AI_SERVICE_URL:http://localhost:8086}
+          predicates:
+            - Path=/api/v1/ai/**
+
 app:
   jwt:
-    secret: CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890
+    secret: ${JWT_SECRET:CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
     expiration: 86400000
 
 eureka:
@@ -99,4 +113,6 @@ management:
     eureka:
       enabled: false
     redis:
+      enabled: false
+    rabbit:
       enabled: false

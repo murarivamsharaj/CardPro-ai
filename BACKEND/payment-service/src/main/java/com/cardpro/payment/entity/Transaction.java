@@ -2,10 +2,10 @@ package com.cardpro.payment.entity;
 
 import com.cardpro.payment.enums.ItemType;
 import com.cardpro.payment.enums.TransactionStatus;
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -39,7 +39,7 @@ public class Transaction {
     @Column(name = "item_type", nullable = false, length = 50)
     private ItemType itemType;
 
-    @Type(JsonBinaryType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "item_details", columnDefinition = "jsonb")
     private String itemDetails;
 
