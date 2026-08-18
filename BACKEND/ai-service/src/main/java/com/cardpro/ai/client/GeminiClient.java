@@ -48,7 +48,7 @@ public class GeminiClient {
             response = webClient.post()
                     .uri(uriBuilder -> uriBuilder
                             // Hardcoded the correct latest model to bypass the application.yml variable
-                            .path("/models/gemini-1.5-flash-latest:generateContent")
+                            .path("/models/gemini-1.5-flash:generateContent")
                             .queryParam("key", apiKey)
                             .build())
                     .header("x-goog-api-key", apiKey)
