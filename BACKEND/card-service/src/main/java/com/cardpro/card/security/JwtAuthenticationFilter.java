@@ -7,6 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -23,12 +24,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Component
+@Slf4j
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final SecretKey secretKey;
 
     public JwtAuthenticationFilter(@Value("${app.jwt.secret}") String secret) {
-        this.secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        if (secret == null || secret.isBlank()) {
+            log.error("CRITICAL: app.jwt.secret is blank or missing in card-service!");
+        }
+        this.secretKey = Keys.hmacShaKeyFor((secret != null ? secret : "default_fallback_secret_key_change_me").getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
@@ -36,10 +41,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
+
+        String path = request.getRequestURI();
+        log.info("Incoming request path to card-service: {}", path);
+
         try {
-            // 1. First, check if the Gateway already authenticated and forwarded user identity headers
+            // 1. Check if Gateway forwarded X-User-Id
             String gatewayUserId = request.getHeader("X-User-Id");
-            if (gatewayUserId != null && !gatewayUserId.isBlank() && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (gatewayUserId != null && !gatewayUserId.isBlank()) {
+                log.info("Found gateway X-User-Id header: {}", gatewayUserId);
                 String email = request.getHeader("X-User-Email");
                 String rolesHeader = request.getHeader("X-User-Roles");
 
@@ -57,9 +67,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new CardUserPrincipal(gatewayUserId, email), null, authorities
                 );
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+                log.info("Successfully authenticated user via Gateway headers: {}", gatewayUserId);
             }
-            // 2. Fallback: Parse raw Authorization header if hit directly or gateway headers are absent
-            else if (SecurityContextHolder.getContext().getAuthentication() == null) {
+            else {
+                log.warn("X-User-Id header missing! Attempting fallback token parse for path: {}", path);
                 String header = request.getHeader("Authorization");
                 if (header != null && header.startsWith("Bearer ")) {
                     String token = header.substring(7);
@@ -86,11 +97,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         );
 
                         SecurityContextHolder.getContext().setAuthentication(authentication);
+                        log.info("Successfully authenticated user via fallback Bearer token: {}", userId);
                     }
+                } else {
+                    log.warn("No Authorization header and no X-User-Id header found for path: {}", path);
                 }
             }
         } catch (Exception e) {
-            logger.error("Cannot set user authentication: {}", e);
+            log.error("FAILED to set user authentication due to exception: {}", e.getMessage(), e);
         }
 
         filterChain.doFilter(request, response);
