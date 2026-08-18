@@ -13,9 +13,9 @@ spring:
       max-request-size: 10MB
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${CARD_DB_HOST:localhost}:${CARD_DB_PORT:5432}/${CARD_DB_NAME:card_db}}
-    username: ${SPRING_DATASOURCE_USERNAME:${CARD_DB_USERNAME:postgres}}
-    password: ${SPRING_DATASOURCE_PASSWORD:${CARD_DB_PASSWORD:murari}}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -32,9 +32,7 @@ spring:
         format_sql: true
 
   flyway:
-    enabled: ${FLYWAY_ENABLED:true}
-    baseline-on-migrate: true
-    locations: classpath:db/migration
+    enabled: false
 
   data:
     redis:
@@ -73,7 +71,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info
   endpoint:
     health:
       show-details: always
