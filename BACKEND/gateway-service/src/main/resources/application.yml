@@ -58,31 +58,37 @@ spring:
 
         # User Service Route
         - id: user-service
-          uri: ${USER_SERVICE_URL:http://localhost:8081}
+          uri: ${USER_SERVICE_URL:https://user-service-tri0.onrender.com}
           predicates:
             - Path=/api/v1/users/**
 
         # Payment Service Route
         - id: payment-service
-          uri: ${PAYMENT_SERVICE_URL:http://localhost:8083}
+          uri: ${PAYMENT_SERVICE_URL:https://payment-service-1glq.onrender.com}
           predicates:
             - Path=/api/v1/payments/**
 
         # Lead Service Route
         - id: lead-service
-          uri: ${LEAD_SERVICE_URL:http://localhost:8085}
+          uri: ${LEAD_SERVICE_URL:https://lead-service-s094.onrender.com}
           predicates:
             - Path=/api/v1/leads/**
 
         # Product Service Route
         - id: product-service
-          uri: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+          uri: ${PRODUCT_SERVICE_URL:https://product-service-bdlp.onrender.com}
           predicates:
             - Path=/api/v1/products/**
 
+        # Order Service Route
+        - id: order-service
+          uri: ${ORDER_SERVICE_URL:https://order-service-7ypr.onrender.com}
+          predicates:
+            - Path=/api/v1/orders/**
+
         # AI Service Route
         - id: ai-service
-          uri: ${AI_SERVICE_URL:http://localhost:8086}
+          uri: ${AI_SERVICE_URL:https://ai-service-8w36.onrender.com}
           predicates:
             - Path=/api/v1/ai/**
 
