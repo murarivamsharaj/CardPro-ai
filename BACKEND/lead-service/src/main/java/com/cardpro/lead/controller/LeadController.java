@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
+
 @RestController
 @RequestMapping("/api/v1/leads")
 @RequiredArgsConstructor
@@ -24,10 +26,11 @@ public class LeadController {
 
     @GetMapping
     public ResponseEntity<Page<LeadResponse>> getLeads(
-            @RequestHeader("X-User-Id") String userId,
+            Principal principal,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false, defaultValue = "") String search) {
+        String userId = principal != null ? principal.getName() : null;
         return ResponseEntity.ok(leadService.getLeadsByUserId(userId, page, size, search));
     }
 
