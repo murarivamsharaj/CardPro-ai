@@ -7,13 +7,17 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.UUID;
 
-@FeignClient(name = "card-service", path = "/api/v1/cards/internal")
+@FeignClient(
+        name = "card-service",
+        url = "${app.service.card-url:http://localhost:8082}",
+        path = "/api/v1/cards/internal"
+)
 public interface CardServiceClient {
 
     @GetMapping("/{profileId}")
     CardProfileResponse getProfileById(
-        @PathVariable UUID profileId,
-        @RequestHeader("X-Internal-API-Key") String apiKey
+            @PathVariable UUID profileId,
+            @RequestHeader("X-Internal-API-Key") String apiKey
     );
 
     /**
@@ -24,7 +28,7 @@ public interface CardServiceClient {
      */
     @GetMapping("/me")
     CardProfileResponse getMyCard(
-        @RequestHeader("X-User-Id") String userId,
-        @RequestHeader("X-Internal-API-Key") String apiKey
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-Internal-API-Key") String apiKey
     );
 }
