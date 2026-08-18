@@ -6,32 +6,36 @@ spring:
     allow-bean-definition-overriding: true
   application:
     name: card-service
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
   datasource:
-    url: jdbc:postgresql://${CARD_DB_HOST:localhost}:${CARD_DB_PORT:5432}/${CARD_DB_NAME:card_db}
-    username: ${CARD_DB_USERNAME:postgres}
-    password: ${CARD_DB_PASSWORD:murari}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${CARD_DB_HOST:localhost}:${CARD_DB_PORT:5432}/${CARD_DB_NAME:card_db}}
+    username: ${SPRING_DATASOURCE_USERNAME:${CARD_DB_USERNAME:postgres}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${CARD_DB_PASSWORD:murari}}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 20
-      minimum-idle: 10
+      maximum-pool-size: 10
+      minimum-idle: 2
       connection-timeout: 30000
-      servlet:
-        multipart:
-          max-file-size: 10MB
-          max-request-size: 10MB
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+
   flyway:
-    enabled: true
+    enabled: ${FLYWAY_ENABLED:true}
     baseline-on-migrate: true
     locations: classpath:db/migration
+
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -39,19 +43,27 @@ spring:
       password: ${REDIS_PASSWORD:}
       timeout: 2000ms
 
+  cloud:
+    discovery:
+      enabled: false
+      client:
+        composite-indicator:
+          enabled: false
+        health-indicator:
+          enabled: false
+
 eureka:
   client:
-    service-url:
-      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@localhost:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
   instance:
     hostname: localhost
     prefer-ip-address: false
 
 app:
   jwt:
-    secret: CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890
+    secret: ${JWT_SECRET:CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
   internal:
     api-key: ${INTERNAL_API_KEY:cardpro-secret-key}
   cache:
@@ -66,5 +78,9 @@ management:
     health:
       show-details: always
   health:
+    discovery:
+      enabled: false
+    eureka:
+      enabled: false
     redis:
       enabled: false
