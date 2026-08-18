@@ -10,9 +10,9 @@ spring:
     username: ${RABBITMQ_USERNAME:cardpro}
     password: ${RABBITMQ_PASSWORD:cardpro}
   datasource:
-    url: jdbc:postgresql://${ORDER_DB_HOST:localhost}:${ORDER_DB_PORT:5432}/${ORDER_DB_NAME:cardpro_orders}
-    username: ${ORDER_DB_USERNAME:postgres}
-    password: ${ORDER_DB_PASSWORD:murari}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://ep-crimson-bar-axrj8yet-pooler.c-4.us-east-2.aws.neon.tech/neondb?sslmode=require}
+    username: ${SPRING_DATASOURCE_USERNAME:neondb_owner}
+    password: ${SPRING_DATASOURCE_PASSWORD:npg_KgQwufS1Bv4C}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -50,7 +50,7 @@ eureka:
 
 app:
   internal:
-    api-key: ${INTERNAL_API_KEY:cardpro-internal-secret-key}
+    api-key: ${INTERNAL_API_KEY:CardProSuperSecretKey}
 
 management:
   endpoints:
