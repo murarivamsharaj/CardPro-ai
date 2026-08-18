@@ -32,12 +32,12 @@ public class LeadService {
 
     public LeadResponse submitLead(SubmitLeadRequest request) {
         Lead lead = Lead.builder()
-            .profileId(request.getProfileId())
-            .visitorName(request.getVisitorName())
-            .visitorEmail(request.getVisitorEmail())
-            .visitorPhone(request.getVisitorPhone())
-            .message(request.getMessage())
-            .build();
+                .profileId(request.getProfileId())
+                .visitorName(request.getVisitorName())
+                .visitorEmail(request.getVisitorEmail())
+                .visitorPhone(request.getVisitorPhone())
+                .message(request.getMessage())
+                .build();
 
         lead = leadRepository.save(lead);
 
@@ -53,11 +53,12 @@ public class LeadService {
     public Page<LeadResponse> getLeadsByUserId(String userId, int page, int size, String search) {
         PageRequest pageRequest = PageRequest.of(page, size);
 
-        // Resolve the user's card ids via card-service. A user with no card yet
-        // gets a 404 from the internal endpoint — treat that as "no leads" rather
-        // than surfacing an error on the dashboard. Any other card-service
-        // failure (500, timeouts, discovery hiccups) degrades the same way: the
-        // dashboard must never hard-fail just because the card lookup hiccuped.
+        // Guard clause: if userId is null/blank, return empty page immediately
+        if (userId == null || userId.isBlank()) {
+            log.warn("Leads: getLeadsByUserId called with null or blank userId");
+            return Page.empty(pageRequest);
+        }
+
         List<UUID> cardIds;
         try {
             CardProfileResponse card = cardServiceClient.getMyCard(userId, internalApiKey);
@@ -77,16 +78,16 @@ public class LeadService {
         String keyword = search == null ? "" : search.trim();
         if (keyword.isEmpty()) {
             return leadRepository.findByProfileIdInOrderByCapturedAtDesc(cardIds, pageRequest)
-                .map(this::mapToResponse);
+                    .map(this::mapToResponse);
         }
 
         return leadRepository.searchByProfileIds(cardIds, keyword, pageRequest)
-            .map(this::mapToResponse);
+                .map(this::mapToResponse);
     }
 
     public String getFollowup(String leadId) {
         Lead lead = leadRepository.findById(UUID.fromString(leadId))
-            .orElseThrow(() -> new RuntimeException("Lead not found"));
+                .orElseThrow(() -> new RuntimeException("Lead not found"));
         return lead.getAiFollowup() != null ? lead.getAiFollowup() : "No follow-up generated yet.";
     }
 
@@ -96,7 +97,7 @@ public class LeadService {
 
     /**
      * Number of leads captured against a single card profile. Used by
-     * card-service's analytics aggregation (via {@code GET /internal/count}).
+     * card-service's analytics aggregation (via GET /internal/count).
      */
     public long countLeadsForProfile(UUID profileId) {
         return leadRepository.countByProfileId(profileId);
@@ -104,14 +105,14 @@ public class LeadService {
 
     private LeadResponse mapToResponse(Lead lead) {
         return LeadResponse.builder()
-            .id(lead.getId())
-            .profileId(lead.getProfileId())
-            .visitorName(lead.getVisitorName())
-            .visitorEmail(lead.getVisitorEmail())
-            .visitorPhone(lead.getVisitorPhone())
-            .message(lead.getMessage())
-            .aiFollowup(lead.getAiFollowup())
-            .capturedAt(lead.getCapturedAt())
-            .build();
+                .id(lead.getId())
+                .profileId(lead.getProfileId())
+                .visitorName(lead.getVisitorName())
+                .visitorEmail(lead.getVisitorEmail())
+                .visitorPhone(lead.getVisitorPhone())
+                .message(lead.getMessage())
+                .aiFollowup(lead.getAiFollowup())
+                .capturedAt(lead.getCapturedAt())
+                .build();
     }
 }
