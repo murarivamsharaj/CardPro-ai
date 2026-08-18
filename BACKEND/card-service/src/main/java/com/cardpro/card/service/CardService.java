@@ -24,8 +24,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -43,7 +45,6 @@ public class CardService {
     private String internalApiKey;
 
     public PublicCardResponse getPublicCard(String slug) {
-        // Try cache first
         PublicCardResponse cached = cardCacheService.getCachedProfile(slug);
         if (cached != null) {
             return cached;
@@ -54,11 +55,6 @@ public class CardService {
         return response;
     }
 
-    /**
-     * Dedicated public query: resolves a card by its unique slug and returns
-     * the public details (no owner information). Deactivated cards are treated
-     * as not found so an offline card's link stops resolving.
-     */
     public PublicCardResponse findBySlug(String slug) {
         CardProfile profile = cardProfileRepository.findBySlug(slug)
                 .orElseThrow(CardNotFoundException::new);
@@ -70,10 +66,25 @@ public class CardService {
         return mapToPublicResponse(profile);
     }
 
+    /**
+     * Updated to return a list of cards belonging to the user,
+     * preventing the NonUniqueResultException crash when a user owns multiple cards.
+     */
+    public List<CardResponse> getCardsByUserId(String userId) {
+        List<CardProfile> profiles = cardProfileRepository.findByUserId(UUID.fromString(userId));
+        if (profiles.isEmpty()) {
+            throw new CardNotFoundException();
+        }
+        return profiles.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    // Maintained for backwards compatibility if a single card is strictly expected elsewhere
     public CardResponse getCardByUserId(String userId) {
-        CardProfile profile = cardProfileRepository.findByUserId(UUID.fromString(userId))
-                .orElseThrow(CardNotFoundException::new);
-        return mapToResponse(profile);
+        List<CardProfile> profiles = cardProfileRepository.findByUserId(UUID.fromString(userId));
+        if (profiles.isEmpty()) {
+            throw new CardNotFoundException();
+        }
+        return mapToResponse(profiles.get(0));
     }
 
     public CardResponse getCardById(UUID profileId) {
@@ -111,8 +122,12 @@ public class CardService {
     }
 
     public CardResponse updateCard(String userId, String ownerEmail, UpdateCardRequest request) {
-        CardProfile profile = cardProfileRepository.findByUserId(UUID.fromString(userId))
-                .orElseThrow(CardNotFoundException::new);
+        // Fetch the user's cards safely
+        List<CardProfile> profiles = cardProfileRepository.findByUserId(UUID.fromString(userId));
+        if (profiles.isEmpty()) {
+            throw new CardNotFoundException();
+        }
+        CardProfile profile = profiles.get(0); // Update the primary/first card or adjust if cardId is provided
 
         if (request.getSlug() != null) {
             slugService.validateSlug(request.getSlug());
@@ -137,8 +152,6 @@ public class CardService {
             profile.setIsActive(request.getIsActive());
         }
         if (ownerEmail != null && !ownerEmail.isBlank()) {
-            // Keep the owner's account email current — it drives the watermark
-            // preference lookup on the public card render.
             profile.setOwnerEmail(ownerEmail);
         }
 
@@ -148,8 +161,11 @@ public class CardService {
     }
 
     public void deleteCard(String userId) {
-        CardProfile profile = cardProfileRepository.findByUserId(UUID.fromString(userId))
-                .orElseThrow(CardNotFoundException::new);
+        List<CardProfile> profiles = cardProfileRepository.findByUserId(UUID.fromString(userId));
+        if (profiles.isEmpty()) {
+            throw new CardNotFoundException();
+        }
+        CardProfile profile = profiles.get(0);
 
         cardProfileRepository.delete(profile);
         cardCacheService.evictCache(profile.getSlug());
@@ -160,21 +176,11 @@ public class CardService {
         incrementViewCount(profileId, null);
     }
 
-    /**
-     * Bumps the cumulative view counter on the profile AND appends a VIEW event
-     * to the analytics log. The optional {@code visitorId} (a caller-supplied
-     * session id) is what makes the unique-visitor metric meaningful.
-     */
     @Transactional
     public void incrementViewCount(UUID profileId, String visitorId) {
         incrementViewCount(profileId, visitorId, CardEventType.VIEW);
     }
 
-    /**
-     * Variant used by the public events endpoint so the stored event type
-     * reflects the caller ({@code PAGE_VIEW} instead of the internal
-     * {@code VIEW}); both are counted as views by the analytics aggregation.
-     */
     @Transactional
     public void incrementViewCount(UUID profileId, String visitorId, CardEventType eventType) {
         CardProfile profile = cardProfileRepository.findById(profileId)
@@ -188,15 +194,9 @@ public class CardService {
                 .visitorId(visitorId)
                 .build());
 
-        // Evict the cache so the updated view count shows on the next request
         cardCacheService.evictCache(profile.getSlug());
     }
 
-    /**
-     * Records a CLICK event when a visitor taps one of the card's social /
-     * portfolio links. The counter column on {@code card_profiles} is untouched;
-     * the analytics log is the source of truth for click metrics.
-     */
     @Transactional
     public void recordClick(UUID profileId, String linkLabel, String visitorId) {
         recordClick(profileId, linkLabel, visitorId, CardEventType.CLICK);
@@ -204,7 +204,6 @@ public class CardService {
 
     @Transactional
     public void recordClick(UUID profileId, String linkLabel, String visitorId, CardEventType eventType) {
-        // Fail with 404 (rather than a dangling event row) if the card does not exist
         cardProfileRepository.findById(profileId)
                 .orElseThrow(CardNotFoundException::new);
 
@@ -216,17 +215,6 @@ public class CardService {
                 .build());
     }
 
-    /**
-     * Ingestion entry point for the public events endpoint
-     * ({@code POST /api/v1/analytics/events}). Maps the accepted event types to
-     * the underlying counters/log rows:
-     *
-     * <ul>
-     *   <li>{@code PAGE_VIEW} — bumps the cumulative view counter + logs the view</li>
-     *   <li>{@code SOCIAL_CLICK} / {@code BUTTON_CLICK} — logs a click on the link</li>
-     *   <li>{@code VCF_DOWNLOAD} — logs the vCard download as a click on "vCard"</li>
-     * </ul>
-     */
     @Transactional
     public void trackEvent(AnalyticsEventRequest request) {
         CardEventType type;
@@ -263,13 +251,6 @@ public class CardService {
                 .build();
     }
 
-    /**
-     * Resolves the owner's removeWatermark Pro preference from user-service.
-     * Fails closed: any lookup error (owner never set, user-service down, bad
-     * internal key) keeps the watermark visible rather than hiding it by mistake.
-     * The result is cached with the public card (TTL 300s), so a preference
-     * change propagates within the cache window.
-     */
     private boolean resolveRemoveWatermark(String ownerEmail) {
         if (ownerEmail == null || ownerEmail.isBlank()) {
             return false;
