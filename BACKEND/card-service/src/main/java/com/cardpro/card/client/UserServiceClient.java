@@ -12,7 +12,11 @@ import org.springframework.web.bind.annotation.RequestParam;
  * the existing inter-service pattern — the shared internal API key travels in
  * the {@code X-Internal-API-Key} header and user-service verifies it.
  */
-@FeignClient(name = "user-service", path = "/api/users/internal")
+@FeignClient(
+        name = "user-service",
+        url = "${USER_SERVICE_URL:http://localhost:8081}",
+        path = "/api/v1/users/internal"
+)
 public interface UserServiceClient {
 
     @GetMapping("/watermark")

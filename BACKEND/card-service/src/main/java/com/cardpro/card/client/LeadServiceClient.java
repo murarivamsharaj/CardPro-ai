@@ -13,7 +13,11 @@ import java.util.UUID;
  * data in card-service's database. Mirrors the existing inter-service pattern
  * (lead-service already calls card-service over Feign with the internal key).
  */
-@FeignClient(name = "lead-service", path = "/api/v1/leads/internal")
+@FeignClient(
+        name = "lead-service",
+        url = "${LEAD_SERVICE_URL:http://localhost:8085}",
+        path = "/api/v1/leads/internal"
+)
 public interface LeadServiceClient {
 
     @GetMapping("/count")
