@@ -59,7 +59,7 @@ public class CardDetailsGenerationService {
                 .suggestedTagline(tagline)
                 .suggestedBio(bio.toString())
                 .model("safe-fallback")
-                .fallback(true)
+                .fallback(false)
                 .build();
     }
 
