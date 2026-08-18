@@ -23,7 +23,7 @@ public class GeminiClient {
     public GeminiClient(
             WebClient geminiWebClient,
             @Value("${app.ai.gemini.api-key}") String apiKey,
-            @Value("${app.ai.gemini.model:gemini-2.5-flash}") String model,
+            @Value("${app.ai.gemini.model:gemini-3.6-flash}") String model,
             @Value("${app.ai.gemini.timeout-seconds:30}") int timeoutSeconds) {
         this.webClient = geminiWebClient;
         this.apiKey = apiKey;
