@@ -17,14 +17,17 @@ public class GeminiClient {
 
     private final WebClient webClient;
     private final String apiKey;
+    private final String model;
     private final int timeoutSeconds;
 
     public GeminiClient(
             WebClient geminiWebClient,
             @Value("${app.ai.gemini.api-key}") String apiKey,
-            @Value("${app.ai.gemini.timeout-seconds}") int timeoutSeconds) {
+            @Value("${app.ai.gemini.model:gemini-2.5-flash}") String model,
+            @Value("${app.ai.gemini.timeout-seconds:30}") int timeoutSeconds) {
         this.webClient = geminiWebClient;
         this.apiKey = apiKey;
+        this.model = model;
         this.timeoutSeconds = timeoutSeconds;
     }
 
@@ -37,7 +40,6 @@ public class GeminiClient {
                 + "'. Return strictly a valid JSON object with keys: 'suggestedJobTitle', "
                 + "'suggestedTagline', 'suggestedBio'. Do not wrap in markdown code fences.";
 
-        // Passing the GenerationConfig to force JSON output
         GenerateContentRequest request = new GenerateContentRequest(
                 List.of(new Content(List.of(new ContentPart(instruction)))),
                 new GenerationConfig("application/json", 0.7)
@@ -47,8 +49,7 @@ public class GeminiClient {
         try {
             response = webClient.post()
                     .uri(uriBuilder -> uriBuilder
-                            // Hardcoded the correct latest model to bypass the application.yml variable
-                            .path("/models/gemini-pro:generateContent")
+                            .path("/models/" + model + ":generateContent")
                             .queryParam("key", apiKey)
                             .build())
                     .header("x-goog-api-key", apiKey)
@@ -87,7 +88,6 @@ public class GeminiClient {
         return cleaned.trim();
     }
 
-    // Updated records to include GenerationConfig for strict JSON
     private record GenerateContentRequest(List<Content> contents, GenerationConfig generationConfig) {}
     private record GenerationConfig(String responseMimeType, double temperature) {}
     private record Content(List<ContentPart> parts) {}

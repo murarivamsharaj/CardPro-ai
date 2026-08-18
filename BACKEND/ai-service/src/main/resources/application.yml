@@ -4,7 +4,9 @@ server:
 spring:
   application:
     name: ai-service
-
+  cloud:
+    discovery:
+      enabled: false
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -13,16 +15,15 @@ spring:
 
 eureka:
   client:
-    service-url:
-      defaultZone: http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@localhost:8761/eureka/
-    register-with-eureka: true
-    fetch-registry: true
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
   instance:
     prefer-ip-address: true
 
 app:
   jwt:
-    secret: CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890
+    secret: ${JWT_SECRET:CardProSuperSecretKeyThatIsLongEnoughForHS2561234567890}
   internal:
     api-key: ${INTERNAL_API_KEY:cardpro-local-secret}
   ai:
@@ -37,8 +38,8 @@ app:
         max-tokens: 300
         temperature: 0.5
     gemini:
-      api-key: ${GEMINI_API_KEY:dummy-gemini-key}
-      model: ${GEMINI_MODEL:gemini-pro}
+      api-key: ${GEMINI_API_KEY}
+      model: ${GEMINI_MODEL:gemini-2.5-flash}
       timeout-seconds: 30
     vision:
       removebg:
@@ -62,4 +63,8 @@ management:
       show-details: always
   health:
     redis:
+      enabled: false
+    discovery:
+      enabled: false
+    eureka:
       enabled: false
