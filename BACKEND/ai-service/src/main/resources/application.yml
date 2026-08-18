@@ -38,7 +38,7 @@ app:
         temperature: 0.5
     gemini:
       api-key: ${GEMINI_API_KEY:dummy-gemini-key}
-      model: ${GEMINI_MODEL:gemini-1.5-flash}
+      model: ${GEMINI_MODEL:gemini-pro}
       timeout-seconds: 30
     vision:
       removebg:
