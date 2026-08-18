@@ -14,7 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal; // 👈 1. Added Principal import
+import java.security.Principal;
+import java.util.List; // 👈 Added List import
 
 @RestController
 @RequestMapping("/api/v1/cards")
@@ -59,13 +60,12 @@ public class CardController {
         return ResponseEntity.ok(cardService.findBySlug(slug));
     }
 
-    // 👇 2. Changed from @RequestHeader to Principal
+    // 👇 Updated to return a List<CardResponse> to support multiple cards per user
     @GetMapping("/me")
-    public ResponseEntity<CardResponse> getMyCard(Principal principal) {
-        return ResponseEntity.ok(cardService.getCardByUserId(principal.getName()));
+    public ResponseEntity<List<CardResponse>> getMyCards(Principal principal) {
+        return ResponseEntity.ok(cardService.getCardsByUserId(principal.getName()));
     }
 
-    // 👇 3. Changed from @RequestHeader to Principal
     @PostMapping
     public ResponseEntity<CardResponse> createCard(
             Principal principal,
@@ -75,7 +75,6 @@ public class CardController {
                 .body(cardService.createCard(principal.getName(), resolveOwnerEmail(principal, headerEmail), request));
     }
 
-    // 👇 4. Changed from @RequestHeader to Principal
     @PutMapping("/me")
     public ResponseEntity<CardResponse> updateCard(
             Principal principal,
@@ -84,7 +83,6 @@ public class CardController {
         return ResponseEntity.ok(cardService.updateCard(principal.getName(), resolveOwnerEmail(principal, headerEmail), request));
     }
 
-    // 👇 5. Changed from @RequestHeader to Principal
     @DeleteMapping("/me")
     public ResponseEntity<Void> deleteCard(Principal principal) {
         cardService.deleteCard(principal.getName());
