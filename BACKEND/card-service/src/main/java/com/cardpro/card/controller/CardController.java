@@ -4,18 +4,20 @@ import com.cardpro.card.dto.request.CreateCardRequest;
 import com.cardpro.card.dto.request.UpdateCardRequest;
 import com.cardpro.card.dto.response.CardResponse;
 import com.cardpro.card.dto.response.PublicCardResponse;
+import com.cardpro.card.exception.CardNotFoundException;
 import com.cardpro.card.security.CardUserPrincipal;
 import com.cardpro.card.service.CardService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
-import java.util.List; // 👈 Added List import
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/cards")
@@ -24,20 +26,42 @@ public class CardController {
 
     private final CardService cardService;
 
+    /**
+     * 🔒 PERMANENT SECURITY FIX:
+     * Previously leaked all cards in the database. Now strictly locked to the
+     * authenticated user's Principal ID. Wraps the secure list in a PageImpl
+     * to satisfy the frontend Dashboard without breaking CardService contracts.
+     */
     @GetMapping
     public ResponseEntity<Page<CardResponse>> getAllCards(
+            Principal principal,
             @RequestParam(required = false, defaultValue = "") String search,
             Pageable pageable
     ) {
-        Page<CardResponse> cards;
+        try {
+            // Safely fetch ONLY the logged-in user's cards
+            List<CardResponse> userCards = cardService.getCardsByUserId(principal.getName());
 
-        if (search.isEmpty()) {
-            cards = cardService.getAllCards(pageable);
-        } else {
-            cards = cardService.searchCards(search, pageable);
+            // Apply search filter locally if requested
+            if (!search.isEmpty()) {
+                String keyword = search.toLowerCase();
+                userCards = userCards.stream()
+                        .filter(c -> c.getSlug() != null && c.getSlug().toLowerCase().contains(keyword))
+                        .toList();
+            }
+
+            // Wrap the secure list in a Page object to maintain frontend compatibility
+            int start = (int) pageable.getOffset();
+            int end = Math.min((start + pageable.getPageSize()), userCards.size());
+            List<CardResponse> pageContent = start <= end ? userCards.subList(start, end) : List.of();
+
+            return ResponseEntity.ok(new PageImpl<>(pageContent, pageable, userCards.size()));
+
+        } catch (CardNotFoundException e) {
+            // Graceful degradation: If a new user has no cards, return a clean,
+            // empty page so the Dashboard renders "0 cards" instead of crashing.
+            return ResponseEntity.ok(new PageImpl<>(List.of(), pageable, 0));
         }
-
-        return ResponseEntity.ok(cards);
     }
 
     @GetMapping("/{slug}")
@@ -45,22 +69,16 @@ public class CardController {
         return ResponseEntity.ok(cardService.getPublicCard(slug));
     }
 
-    /**
-     * Dedicated public slug endpoint (unauthenticated). Resolves an ACTIVE card
-     * by slug via {@code findBySlug} — deactivated cards return 404.
-     */
     @GetMapping("/public/{slug}")
     public ResponseEntity<PublicCardResponse> getPublicCardBySlug(@PathVariable String slug) {
         return ResponseEntity.ok(cardService.findBySlug(slug));
     }
 
-    /** Alias of {@code /public/{slug}} kept for clients using the /slug/ path. */
     @GetMapping("/slug/{slug}")
     public ResponseEntity<PublicCardResponse> getPublicCardBySlugAlias(@PathVariable String slug) {
         return ResponseEntity.ok(cardService.findBySlug(slug));
     }
 
-    // 👇 Updated to return a List<CardResponse> to support multiple cards per user
     @GetMapping("/me")
     public ResponseEntity<List<CardResponse>> getMyCards(Principal principal) {
         return ResponseEntity.ok(cardService.getCardsByUserId(principal.getName()));
@@ -89,12 +107,6 @@ public class CardController {
         return ResponseEntity.noContent().build();
     }
 
-    /**
-     * The owner's account email, used to look up user-service preferences on
-     * the public card. Prefers the JWT email claim (set by our filter via
-     * {@link CardUserPrincipal}); falls back to the gateway-injected
-     * {@code X-User-Email} header for callers that arrive without it.
-     */
     private String resolveOwnerEmail(Principal principal, String headerEmail) {
         if (principal instanceof CardUserPrincipal cardUser && cardUser.email() != null && !cardUser.email().isBlank()) {
             return cardUser.email();
