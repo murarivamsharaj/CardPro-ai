@@ -38,17 +38,17 @@ spring:
           predicates:
             - Path=/api/v1/files/**
 
+        # Payment Service Route (MUST BE ABOVE USER SERVICE)
+        - id: payment-service
+          uri: ${PAYMENT_SERVICE_URL:https://payment-service-1glq.onrender.com}
+          predicates:
+            - Path=/api/v1/payments/**, /api/users/payments/**
+
         # User Service Route
         - id: user-service
           uri: ${USER_SERVICE_URL:https://user-service-tri0.onrender.com}
           predicates:
             - Path=/api/v1/users/**, /api/users/**
-
-        # Payment Service Route
-        - id: payment-service
-          uri: ${PAYMENT_SERVICE_URL:https://payment-service-1glq.onrender.com}
-          predicates:
-            - Path=/api/v1/payments/**, /api/users/payments/**
 
         # Lead Service Route
         - id: lead-service
