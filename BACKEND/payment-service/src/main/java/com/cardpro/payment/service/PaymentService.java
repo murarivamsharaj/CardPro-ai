@@ -44,12 +44,17 @@ public class PaymentService {
     private String razorpayKeySecret;
 
     public CreateOrderResponse createOrder(String userId, CreateOrderRequest request) {
-        // Amount is taken from the request when supplied, otherwise derived
-        // from the catalogue price for the item type (never trust a client
-        // amount blindly, so the catalogue stays the source of truth).
-        int amountRupees = request.getAmount() != null
-                ? request.getAmount()
-                : getPriceForItem(request.getItemType()).intValue();
+
+        // Null-safe price calculation
+        int amountRupees;
+        if (request.getAmount() != null) {
+            amountRupees = request.getAmount();
+        } else if (request.getItemType() != null) {
+            amountRupees = getPriceForItem(request.getItemType()).intValue();
+        } else {
+            amountRupees = 999; // Default fallback for an unspecified Pro Upgrade
+        }
+
         String receiptId = request.getReceiptId() != null && !request.getReceiptId().isBlank()
                 ? request.getReceiptId()
                 : "cardpro_" + UUID.randomUUID().toString().substring(0, 8);
@@ -57,22 +62,22 @@ public class PaymentService {
         String rzpOrderId = createRazorpayOrder(amountRupees, receiptId);
 
         Transaction transaction = Transaction.builder()
-            .userId(UUID.fromString(userId))
-            .itemType(request.getItemType())
-            .amount(BigDecimal.valueOf(amountRupees))
-            .rzpOrderId(rzpOrderId)
-            .status(TransactionStatus.PENDING)
-            .build();
+                .userId(UUID.fromString(userId))
+                .itemType(request.getItemType()) // Can safely be null for custom amounts
+                .amount(BigDecimal.valueOf(amountRupees))
+                .rzpOrderId(rzpOrderId)
+                .status(TransactionStatus.PENDING)
+                .build();
 
         transactionRepository.save(transaction);
 
         return CreateOrderResponse.builder()
-            .orderId(rzpOrderId)
-            .razorpayKeyId(razorpayKeyId)
-            .amount(amountRupees * 100)
-            .currency(currency)
-            .status("created")
-            .build();
+                .orderId(rzpOrderId)
+                .razorpayKeyId(razorpayKeyId)
+                .amount(amountRupees * 100)
+                .currency(currency)
+                .status("created")
+                .build();
     }
 
     /**

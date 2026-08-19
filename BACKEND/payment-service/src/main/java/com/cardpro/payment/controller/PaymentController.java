@@ -11,8 +11,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
+
 @RestController
-@RequestMapping("/api/v1/payments")
+// Accept requests from both the standard v1 path and the user-service gateway proxy path
+@RequestMapping({"/api/v1/payments", "/api/users/payments"})
 @RequiredArgsConstructor
 public class PaymentController {
 
@@ -20,23 +23,43 @@ public class PaymentController {
 
     @PostMapping("/create-order")
     public ResponseEntity<CreateOrderResponse> createOrder(
-            @RequestHeader("X-User-Id") String userId,
-            @Valid @RequestBody CreateOrderRequest request) {
+            @RequestHeader(value = "X-User-Id", required = false) String headerUserId,
+            Principal principal,
+            @RequestBody(required = false) CreateOrderRequest request) {
+
+        String userId = resolveUserId(headerUserId, principal);
+
+        // Handle empty bodies gracefully (e.g., when frontend triggers a default PRO upgrade)
+        if (request == null) {
+            request = new CreateOrderRequest();
+            request.setAmount(999); // Fallback standard amount
+        }
+
         return ResponseEntity.ok(paymentService.createOrder(userId, request));
     }
 
     @PostMapping("/verify")
     public ResponseEntity<VerifyPaymentResponse> verifyPayment(
-            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader(value = "X-User-Id", required = false) String headerUserId,
+            Principal principal,
             @Valid @RequestBody VerifyPaymentRequest request) {
-        return ResponseEntity.ok(paymentService.verifyPayment(userId, request));
+
+        return ResponseEntity.ok(paymentService.verifyPayment(resolveUserId(headerUserId, principal), request));
     }
 
     @GetMapping("/history")
     public ResponseEntity<Page<?>> getHistory(
-            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader(value = "X-User-Id", required = false) String headerUserId,
+            Principal principal,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(paymentService.getTransactionHistory(userId, page, size));
+
+        return ResponseEntity.ok(paymentService.getTransactionHistory(resolveUserId(headerUserId, principal), page, size));
+    }
+
+    private String resolveUserId(String headerUserId, Principal principal) {
+        if (headerUserId != null) return headerUserId;
+        if (principal != null) return principal.getName();
+        throw new IllegalArgumentException("User context is missing");
     }
 }
