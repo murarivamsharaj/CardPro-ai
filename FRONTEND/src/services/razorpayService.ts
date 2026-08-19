@@ -1,11 +1,3 @@
-/**
- * Razorpay Checkout helpers.
- *
- * The checkout script is also loaded declaratively in index.html; the loader
- * below is a safety net for environments where that <script> tag is blocked
- * (CSP, ad-blockers, offline dev) — it injects the same CDN script once.
- */
-
 const RAZORPAY_CHECKOUT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
 
 declare global {
@@ -16,7 +8,6 @@ declare global {
 
 let scriptPromise: Promise<void> | null = null;
 
-/** Ensures the Razorpay Checkout script is present, then resolves. */
 export function loadRazorpayScript(): Promise<void> {
   if (window.Razorpay) return Promise.resolve();
   if (scriptPromise) return scriptPromise;
@@ -36,7 +27,6 @@ export function loadRazorpayScript(): Promise<void> {
   return scriptPromise;
 }
 
-/** Payment fields Razorpay passes to the modal's success handler. */
 export interface RazorpayPaymentResult {
   razorpayOrderId: string;
   razorpayPaymentId: string;
@@ -44,15 +34,12 @@ export interface RazorpayPaymentResult {
 }
 
 export interface RazorpayCheckoutOptions {
-  /** Public Razorpay Key ID (from the create-order response). */
-  key: string;
-  /** Order amount in paise. */
+  key?: string;
   amount: number;
   currency: string;
-  /** Order ID from the create-order endpoint. */
   orderId: string;
-  name: string;
-  description: string;
+  name?: string;
+  description?: string;
   email?: string;
   prefill?: { name?: string; contact?: string };
   themeColor?: string;
@@ -60,11 +47,6 @@ export interface RazorpayCheckoutOptions {
   onDismiss?: () => void;
 }
 
-/**
- * Loads the checkout script (if needed) and opens the Razorpay payment modal.
- * The success handler receives the raw Razorpay callback fields, which the
- * caller is expected to forward to the backend verify endpoint.
- */
 export async function openRazorpayCheckout(options: RazorpayCheckoutOptions): Promise<void> {
   await loadRazorpayScript();
 
@@ -73,13 +55,16 @@ export async function openRazorpayCheckout(options: RazorpayCheckoutOptions): Pr
     throw new Error('Razorpay checkout is unavailable');
   }
 
+  // Guaranteed fallback so the modal never initializes without an auth key
+  const finalKey = options.key || (import.meta.env.VITE_RAZORPAY_KEY_ID as string) || 'rzp_test_TQnTopgwwCYbNN';
+
   const rzp = new Razorpay({
-    key: options.key,
+    key: finalKey,
     amount: options.amount,
-    currency: options.currency,
+    currency: options.currency || 'INR',
     order_id: options.orderId,
-    name: options.name,
-    description: options.description,
+    name: options.name || 'CardPro AI',
+    description: options.description || 'CardPro Pro Plan',
     prefill: {
       email: options.email,
       ...options.prefill,

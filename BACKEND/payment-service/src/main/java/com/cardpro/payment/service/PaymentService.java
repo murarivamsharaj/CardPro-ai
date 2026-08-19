@@ -65,7 +65,7 @@ public class PaymentService {
         // 1. Create order on Razorpay
         String rzpOrderId = createRazorpayOrder(amountRupees, receiptId);
 
-        // 2. Safely attempt database record creation (non-blocking for demo resilience)
+        // 2. Safely attempt database record creation
         try {
             Transaction transaction = Transaction.builder()
                     .userId(UUID.fromString(userId))
@@ -80,9 +80,14 @@ public class PaymentService {
             log.warn("Database transaction record skipped or failed: {}", e.getMessage());
         }
 
+        String resolvedKey = (razorpayKeyId != null && !razorpayKeyId.isBlank())
+                ? razorpayKeyId
+                : "rzp_test_TQnTopgwwCYbNN";
+
         return CreateOrderResponse.builder()
                 .orderId(rzpOrderId)
-                .razorpayKeyId(razorpayKeyId != null ? razorpayKeyId : "rzp_test_TQnTopgwwCYbNN")
+                .razorpayKeyId(resolvedKey)
+                .key(resolvedKey)
                 .amount(amountRupees * 100)
                 .currency(currency != null ? currency : "INR")
                 .status("created")
@@ -108,7 +113,6 @@ public class PaymentService {
     }
 
     public VerifyPaymentResponse verifyPayment(String userId, VerifyPaymentRequest request) {
-        // 1. Verify Razorpay cryptographic signature
         JSONObject options = new JSONObject();
         options.put("razorpay_order_id", request.getRazorpayOrderId());
         options.put("razorpay_payment_id", request.getRazorpayPaymentId());
@@ -127,7 +131,6 @@ public class PaymentService {
             throw new IllegalStateException("Payment signature verification failed. Possible tampering detected.");
         }
 
-        // 2. Safely update transaction status in database
         try {
             transactionRepository.findByRzpOrderId(request.getRazorpayOrderId()).ifPresent(transaction -> {
                 transaction.setStatus(TransactionStatus.SUCCESS);
@@ -138,7 +141,6 @@ public class PaymentService {
             log.warn("Database status update skipped: {}", e.getMessage());
         }
 
-        // 3. Safely broadcast message broker event (won't crash if RabbitMQ is offline)
         try {
             rabbitTemplate.convertAndSend(
                     "cardpro.events.exchange",
