@@ -33,30 +33,34 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // Stateless REST API — explicitly disable CSRF so unauthenticated
-            // POSTs (e.g. public lead capture) are not rejected with 403.
-            .csrf(csrf -> csrf.disable())
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                // CORS preflight — answered by the rawCorsFilter below, but keep
-                // the OPTIONS matcher permissive as a safety net for direct calls.
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // Never secure the ERROR dispatch: an exception inside a
-                // controller forwards to /error, and if that dispatch requires
-                // authentication the client sees a misleading 403 instead of
-                // the real 4xx/5xx status.
-                .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                // Dashboard lead list — JWT is enforced upstream at the gateway,
-                // so the lead-service itself must not require auth here.
-                .requestMatchers(HttpMethod.GET, "/api/v1/leads").permitAll()
-                // Public lead capture: unauthenticated visitors submit the
-                // "Contact Me" form to POST /api/v1/leads (auth enforced at the
-                // gateway). The visitor is anonymous — no X-User-Id required.
-                .requestMatchers(HttpMethod.POST, "/api/v1/leads").permitAll()
-                .requestMatchers("/api/v1/leads/internal/**").permitAll()
-                .anyRequest().authenticated()
-            )
-            .addFilterAfter(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class);
+                // Stateless REST API — explicitly disable CSRF so unauthenticated
+                // POSTs (e.g. public lead capture) are not rejected with 403.
+                .csrf(csrf -> csrf.disable())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // CORS preflight — answered by the rawCorsFilter below, but keep
+                        // the OPTIONS matcher permissive as a safety net for direct calls.
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // 👇 ADD THIS: Allow public access to actuator health probes for UptimeRobot
+                        .requestMatchers("/actuator/**").permitAll()
+
+                        // Never secure the ERROR dispatch: an exception inside a
+                        // controller forwards to /error, and if that dispatch requires
+                        // authentication the client sees a misleading 403 instead of
+                        // the real 4xx/5xx status.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+                        // Dashboard lead list — JWT is enforced upstream at the gateway,
+                        // so the lead-service itself must not require auth here.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/leads").permitAll()
+                        // Public lead capture: unauthenticated visitors submit the
+                        // "Contact Me" form to POST /api/v1/leads (auth enforced at the
+                        // gateway). The visitor is anonymous — no X-User-Id required.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/leads").permitAll()
+                        .requestMatchers("/api/v1/leads/internal/**").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .addFilterAfter(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
