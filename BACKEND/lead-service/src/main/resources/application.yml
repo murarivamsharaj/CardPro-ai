@@ -63,3 +63,7 @@ management:
   endpoint:
     health:
       show-details: always
+  # 👇 ADD THIS BLOCK to stop UptimeRobot from timing out on the mail server
+  health:
+    mail:
+      enabled: false
