@@ -51,3 +51,6 @@ docker-compose.override.yml
 # Logs
 logs/
 *.log
+
+# AI Tool Configs
+.freebuff/
