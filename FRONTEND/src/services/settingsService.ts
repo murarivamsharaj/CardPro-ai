@@ -1,12 +1,11 @@
 import axios from 'axios';
 import api from './api';
 import { analyticsService } from './analyticsService';
-import { USER_SERVICE_BASE_URL } from '../utils/constants';
+import { USER_SERVICE_BASE_URL, STORAGE_KEYS } from '../utils/constants';
 
 /**
- * Dedicated axios instance for direct calls to user-service (profile details
- * + notification preferences). The gateway does not route user-service, so we
- * hit its published port directly and attach the JWT ourselves.
+ * Dedicated axios instance for direct/gateway calls to user-service (profile details
+ * + notification preferences).
  */
 const userApi = axios.create({
   baseURL: USER_SERVICE_BASE_URL,
@@ -14,7 +13,12 @@ const userApi = axios.create({
 });
 
 userApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  // Support both custom storage key and standard fallback
+  const token =
+    localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN) ||
+    localStorage.getItem('token') ||
+    localStorage.getItem('cardpro_auth_token');
+
   if (token && token !== 'undefined' && token !== 'null' && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -104,7 +108,7 @@ export const deleteMyAccount = async (): Promise<UserProfile> => {
   return data;
 };
 
-/* ─────────────── payments (user-service, direct) ─────────────── */
+/* ─────────────── payments (user-service / gateway) ─────────────── */
 
 export interface CreateOrderResponse {
   orderId: string;
@@ -179,6 +183,5 @@ export const setRegistrationConfig = async (enabled: boolean): Promise<Registrat
 /* ─────────────── card-service (via gateway) ────────────────── */
 
 export const getTotalCardCount = async (): Promise<TotalCardsResponse> => {
-  // Delegates to analyticsService so the analytics API contract lives in one place
   return analyticsService.getTotalCards();
 };
