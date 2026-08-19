@@ -13,22 +13,6 @@ spring:
         health-indicator:
           enabled: false
     gateway:
-      globalcors:
-#        add-to-simple-url-handler-mapping: true
-#        cors-configurations:
-#          '[/**]':
-#            allowedOriginPatterns:
-#              - "*"
-#            allowedMethods:
-#              - GET
-#              - POST
-#              - PUT
-#              - DELETE
-#              - PATCH
-#              - OPTIONS
-#            allowedHeaders: "*"
-#            allowCredentials: true
-
       routes:
         # Auth Service Route
         - id: auth-service
@@ -58,13 +42,13 @@ spring:
         - id: user-service
           uri: ${USER_SERVICE_URL:https://user-service-tri0.onrender.com}
           predicates:
-            - Path=/api/v1/users/**
+            - Path=/api/v1/users/**, /api/users/**
 
         # Payment Service Route
         - id: payment-service
           uri: ${PAYMENT_SERVICE_URL:https://payment-service-1glq.onrender.com}
           predicates:
-            - Path=/api/v1/payments/**
+            - Path=/api/v1/payments/**, /api/users/payments/**
 
         # Lead Service Route
         - id: lead-service
