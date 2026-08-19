@@ -14,8 +14,8 @@ import java.util.UUID;
 @Repository
 public interface CardProfileRepository extends JpaRepository<CardProfile, UUID> {
 
-    // Single card by user ID (used by CardService .orElseThrow())
-    Optional<CardProfile> findByUserId(UUID userId);
+    // Safe single card lookup: uses 'findFirst' to prevent NonUniqueResultException if a user has multiple cards
+    Optional<CardProfile> findFirstByUserId(UUID userId);
 
     // Multiple cards by user ID (used by AnalyticsService)
     List<CardProfile> findAllByUserId(UUID userId);

@@ -37,13 +37,14 @@ public class PaymentEventListener {
             case "TEMPLATE" -> unlockPremiumTemplates(event.userId());
             case "LEAD_PACK" -> addLeadCredits(event.userId());
             case "NFC", "CUSTOM_DOMAIN", "AI_PHOTO" ->
-                log.info("No unlock logic for itemType '{}' yet (user {})", event.itemType(), event.userId());
+                    log.info("No unlock logic for itemType '{}' yet (user {})", event.itemType(), event.userId());
             default -> log.warn("Unknown itemType '{}' in payment.completed event", event.itemType());
         }
     }
 
     private void unlockPremiumTemplates(String userId) {
-        Optional<CardProfile> profile = cardProfileRepository.findByUserId(UUID.fromString(userId));
+        // Changed findByUserId to findFirstByUserId to handle multiple cards safely
+        Optional<CardProfile> profile = cardProfileRepository.findFirstByUserId(UUID.fromString(userId));
         if (profile.isEmpty()) {
             log.warn("No card profile found for user {}, cannot unlock premium templates", userId);
             return;
@@ -55,7 +56,8 @@ public class PaymentEventListener {
     }
 
     private void addLeadCredits(String userId) {
-        Optional<CardProfile> profile = cardProfileRepository.findByUserId(UUID.fromString(userId));
+        // Changed findByUserId to findFirstByUserId to handle multiple cards safely
+        Optional<CardProfile> profile = cardProfileRepository.findFirstByUserId(UUID.fromString(userId));
         if (profile.isEmpty()) {
             log.warn("No card profile found for user {}, cannot add lead credits", userId);
             return;
