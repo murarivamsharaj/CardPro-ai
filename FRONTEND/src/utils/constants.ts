@@ -88,20 +88,18 @@ export const API_ENDPOINTS = {
 export const TOAST_DURATION = 4000;
 
 /**
- * user-service is intentionally NOT routed through the gateway (gateway
- * routing is stable/off-limits), so the browser calls it directly on its
- * published host port. CORS on the service allows the dev (5173) and Docker
- * (3000) frontends.
+ * API Gateway base URL resolved dynamically from environment variables
+ * with production Render gateway fallback.
  */
-export const USER_SERVICE_BASE_URL = 'http://localhost:8083/api';
+export const GATEWAY_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'https://cardpro-ai.onrender.com';
 
 /**
- * API Gateway base URL. Server-relative file/avatar URLs (e.g.
- * /api/v1/files/view/...) are resolved against this so <img> tags never try
- * to load them from the Vite dev server / static host port (which would
- * 404 into a broken-image icon when the /api proxy is not in play).
+ * Base URL for user-service and direct payment requests.
+ * Uses VITE_USER_SERVICE_URL if specified, otherwise routes via Gateway.
  */
-export const GATEWAY_BASE_URL = 'http://localhost:8765';
+export const USER_SERVICE_BASE_URL =
+  import.meta.env.VITE_USER_SERVICE_URL || `${GATEWAY_BASE_URL}/api`;
 
 /** localStorage key for the Dark/Light theme preference. */
 export const THEME_STORAGE_KEY = 'cardpro_theme';
