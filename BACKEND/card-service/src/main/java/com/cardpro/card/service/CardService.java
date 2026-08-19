@@ -80,7 +80,7 @@ public class CardService {
 
     // Maintained for backwards compatibility using Optional findByUserId
     public CardResponse getCardByUserId(String userId) {
-        CardProfile profile = cardProfileRepository.findByUserId(UUID.fromString(userId))
+        CardProfile profile = cardProfileRepository.findFirstByUserId(UUID.fromString(userId))
                 .orElseThrow(CardNotFoundException::new);
         return mapToResponse(profile);
     }
