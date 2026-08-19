@@ -39,10 +39,11 @@ spring:
 
 eureka:
   client:
+    enabled: false # 👈 Completely disables the Eureka client and stops the localhost:8761 spam
     service-url:
       defaultZone: ${EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE:http://${EUREKA_USERNAME:eureka}:${EUREKA_PASSWORD:eureka123}@localhost:8761/eureka/}
-    register-with-eureka: ${EUREKA_REGISTER_WITH_EUREKA:true}
-    fetch-registry: ${EUREKA_FETCH_REGISTRY:true}
+    register-with-eureka: false
+    fetch-registry: false
   instance:
     prefer-ip-address: true
 

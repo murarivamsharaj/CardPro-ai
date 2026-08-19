@@ -64,9 +64,11 @@ public class LeadService {
             CardProfileResponse card = cardServiceClient.getMyCard(userId, internalApiKey);
             cardIds = card != null ? List.of(card.id()) : List.of();
         } catch (FeignException e) {
-            if (!(e instanceof FeignException.NotFound)) {
-                log.warn("Leads: could not resolve cards for user {} from card-service: {}",
-                        userId, e.getMessage());
+            if (e instanceof FeignException.Forbidden) {
+                log.error("Leads: 403 Forbidden from card-service. Check if INTERNAL_API_KEY matches in both lead-service and card-service environment variables!");
+            } else if (!(e instanceof FeignException.NotFound)) {
+                log.warn("Leads: could not resolve cards for user {} from card-service: status={}, message={}",
+                        userId, e.status(), e.getMessage());
             }
             return Page.empty(pageRequest);
         }
