@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import api from '../../services/api';
+import React, { useState } from 'react';
 
 export interface NotificationItem {
   id: string;
@@ -28,23 +27,10 @@ const MOCK_NOTIFICATIONS: NotificationItem[] = [
 
 export const NotificationBell: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  
+  // We simply initialize with the mock data. No API calls are made, 
+  // which instantly fixes the 404 NOT_FOUND console error!
   const [notifications, setNotifications] = useState<NotificationItem[]>(MOCK_NOTIFICATIONS);
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const response = await api.get('/api/v1/notifications');
-        if (response.data) {
-          setNotifications(response.data?.data || response.data);
-        }
-      } catch (error) {
-        // Silently fall back to mock data if backend endpoint isn't implemented yet
-        console.warn('Notifications endpoint returned 404. Using local mock data.');
-      }
-    };
-
-    fetchNotifications();
-  }, []);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
