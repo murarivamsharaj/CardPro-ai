@@ -25,7 +25,8 @@ public class InternalApiKeyFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         // ONLY apply this filter to internal service routes. Skip everything else.
-        return !request.getRequestURI().startsWith("/api/v1/auth/internal");
+        String path = request.getServletPath();
+        return !path.startsWith("/api/v1/auth/internal");
     }
 
     @Override
@@ -35,14 +36,13 @@ public class InternalApiKeyFilter extends OncePerRequestFilter {
             FilterChain filterChain)
             throws ServletException, IOException {
 
-        log.info("InternalApiKeyFilter Executed for: {}", request.getRequestURI());
+        log.debug("InternalApiKeyFilter executing for: {}", request.getServletPath());
 
         String requestApiKey = request.getHeader("X-Internal-Api-Key");
 
-        if (internalApiKey.equals(requestApiKey)) {
-            log.info("Internal API Key validated successfully.");
+        if (internalApiKey != null && internalApiKey.equals(requestApiKey)) {
+            log.debug("Internal API Key validated successfully.");
 
-            // Inform Spring Security that this request has the INTERNAL_SERVICE role
             UsernamePasswordAuthenticationToken internalAuth = new UsernamePasswordAuthenticationToken(
                     "internal-service-client",
                     null,
@@ -54,7 +54,7 @@ public class InternalApiKeyFilter extends OncePerRequestFilter {
             return;
         }
 
-        log.warn("Invalid or Missing Internal API Key.");
+        log.warn("Invalid or Missing Internal API Key for route: {}", request.getServletPath());
 
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType("application/json");

@@ -27,10 +27,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
-        String path = request.getRequestURI();
+        String path = request.getServletPath();
 
-        // Completely bypass JWT validation for actuator, public auth endpoints, swagger, and internal APIs
-        return path.startsWith("/actuator") ||
+        // Completely bypass JWT validation for root, actuator, public auth, swagger, and internal APIs
+        return path.equals("/") ||
+                path.startsWith("/actuator") ||
                 path.startsWith("/error") ||
                 path.startsWith("/swagger-ui") ||
                 path.startsWith("/v3/api-docs") ||
@@ -60,10 +61,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     new UsernamePasswordAuthenticationToken(null, token);
 
             Authentication authentication = authenticationManager.authenticate(authRequest);
-
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            log.debug("JWT authentication successful for user: {}",
-                    ((UserPrincipal) authentication.getPrincipal()).getEmail());
+
+            if (authentication.getPrincipal() instanceof UserPrincipal principal) {
+                log.debug("JWT authentication successful for user: {}", principal.getEmail());
+            }
         } catch (AuthenticationException e) {
             log.debug("JWT authentication failed: {}", e.getMessage());
             SecurityContextHolder.clearContext();

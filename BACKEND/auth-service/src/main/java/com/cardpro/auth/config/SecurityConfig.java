@@ -5,7 +5,6 @@ import com.cardpro.auth.security.JwtAuthenticationFilter;
 import com.cardpro.auth.security.JwtAuthenticationProvider;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.boot.actuate.autoconfigure.security.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -45,8 +44,7 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authenticationEntryPoint())
                         .accessDeniedHandler(accessDeniedHandler()))
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Actuator Endpoints (Permit all actuator health, info, etc.)
-                        .requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll()
+                        // 1. Actuator Endpoints (Monitoring & Uptime)
                         .requestMatchers("/actuator/**").permitAll()
 
                         // 2. Swagger & OpenAPI docs
@@ -57,14 +55,17 @@ public class SecurityConfig {
                                 "/v3/api-docs"
                         ).permitAll()
 
-                        // 3. Pre-flight CORS options & error dispatch
+                        // 3. Pre-flight CORS options, root & error dispatch
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/error").permitAll()
+                        .requestMatchers("/", "/error").permitAll()
 
                         // 4. Public auth routes
                         .requestMatchers(
+                                "/api/v1/auth/login",
                                 "/api/v1/auth/login/**",
+                                "/api/v1/auth/register",
                                 "/api/v1/auth/register/**",
+                                "/api/v1/auth/refresh",
                                 "/api/v1/auth/refresh/**"
                         ).permitAll()
 
@@ -81,7 +82,7 @@ public class SecurityConfig {
                         .authenticated()
                 )
                 .addFilterBefore(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
