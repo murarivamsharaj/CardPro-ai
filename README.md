@@ -24,6 +24,7 @@
   <h1>🚀 CardPro AI</h1>
   <h3>AI-Powered Digital Visiting Card & Lead Generation SaaS Platform</h3>
   <p><em>Replace physical business cards with intelligent, lead-generating digital profiles — powered by AI.</em></p>
+  <p><strong>🔗 Live Demo:</strong> <a href="https://frontend-two-kohl-2uyfslpb5o.vercel.app">frontend-two-kohl-2uyfslpb5o.vercel.app</a></p>
 </div>
 
 <br/>
@@ -95,7 +96,7 @@ Detailed documentation is available in the [DOCS](./DOCS) directory:
 
 The platform follows a **microservices architecture** using Spring Cloud, with each service owning its data and scaling independently. All external traffic enters through a single gateway, which routes to services discovered dynamically via Eureka.
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────────────┐
 │                          CLIENT LAYER                               │
 │                                                                     │
@@ -225,12 +226,12 @@ Shared, multi-purpose infrastructure layer:
 
 | Service | Responsibility |
 |---|---|
-| 👤 **user-service** | User profile CRUD (`/api/users`) |
-| 📦 **product-service** | Product catalog CRUD (`/api/v1/products`) — consumed by order-service via OpenFeign |
+| 👤 **user-service** | User profile CRUD (`/api/users`) (Port: 8087) |
+| 📦 **product-service** | Product catalog CRUD (`/api/v1/products`) (Port: 8088) |
 
 ### 🔁 Event-Driven Messaging (RabbitMQ)
 
-```
+```text
 ┌──────────────────────┐      publish       ┌──────────────────────────┐
 │     order-service    │  OrderCreatedEvent │        RabbitMQ          │
 │  (order lifecycle)   │ ─────────────────▶ │  order.exchange          │
@@ -331,7 +332,7 @@ This pattern gives **eventual consistency**: if payment-service is down, events 
 | **TypeScript 5** | Type-safe JavaScript |
 | **Vite 5** | Fast build tool and HMR dev server |
 | **Tailwind CSS 3** | Utility-first styling |
-| **Redux Toolkit + Zustand** | Predictable state management |
+| **Redux Toolkit** | Predictable state management |
 | **React Router 6** | Client-side routing |
 | **React Hook Form** | Performant form management |
 | **Axios** | HTTP client with interceptors |
@@ -353,7 +354,7 @@ This pattern gives **eventual consistency**: if payment-service is down, events 
 
 ## 📁 Folder Structure
 
-```
+```text
 cardpro-ai/
 │
 ├── .github/                        # CI/CD workflows, issue/PR templates
@@ -401,7 +402,7 @@ cardpro-ai/
 
 ### Microservice Package Structure (Example: auth-service)
 
-```
+```text
 auth-service/
 ├── pom.xml
 ├── Dockerfile
@@ -442,7 +443,7 @@ Every service follows the same layered convention: `controller → service → r
 
 ```bash
 # Clone the repository
-git clone https://github.com/murarivamsharaj/CardPro-ai.git
+git clone [https://github.com/murarivamsharaj/CardPro-ai.git](https://github.com/murarivamsharaj/CardPro-ai.git)
 cd cardpro-ai
 
 # Create your .env from the template
@@ -539,8 +540,8 @@ This additionally exposes:
 |---|---|
 | 🐇 RabbitMQ (AMQP) | localhost:5672 |
 | 🐇 RabbitMQ Management UI | http://localhost:15672 (`cardpro` / `cardpro`) |
-| 👤 user-service | localhost:8083 |
-| 📦 product-service | localhost:8085 |
+| 👤 user-service | localhost:8087 |
+| 📦 product-service | localhost:8088 |
 
 ### Option 3: Run with Maven (local development)
 
@@ -569,7 +570,7 @@ Export `JWT_SECRET` and `INTERNAL_API_KEY` in your shell (or set them in your ID
 
 ### Service Startup Order
 
-```
+```text
 1. discovery-service   (Eureka must be up first)
 2. gateway-service     (Gateway needs Eureka)
 3. auth-service        (Other services depend on auth)
@@ -683,8 +684,8 @@ Complete API documentation is available in the [Postman collection](./POSTMAN/co
 | Environment | URL |
 |---|---|
 | **Local** | `http://localhost:8765/api/v1` |
-| **Staging** | `[https://staging-api.cardpro.ai/api/v1](https://staging-api.cardpro.ai/api/v1)` |
-| **Production** | `[https://api.cardpro.ai/api/v1](https://api.cardpro.ai/api/v1)` |
+| **Staging** | `https://staging-api.cardpro.ai/api/v1` |
+| **Production** | `https://api.cardpro.ai/api/v1` |
 
 ### Authentication APIs
 
@@ -760,8 +761,7 @@ Complete API documentation is available in the [Postman collection](./POSTMAN/co
 
 ## 👥 Contributors
 
-- **Senior Software Architect** — System design, architecture, microservices decomposition
-- **Chittipoola Murari** — Core Developer
+- **Chittipoola Murari** — Lead Full Stack Developer & Architect
 
 ---
 
