@@ -5,6 +5,20 @@ spring:
   application:
     name: auth-service
 
+  # --- NEW: Email Configuration for Login Alerts ---
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:your-email@gmail.com}
+    password: ${MAIL_PASSWORD:your-app-password}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  # -----------------------------------------------
+
   cloud:
     discovery:
       enabled: false

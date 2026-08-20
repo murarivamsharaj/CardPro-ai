@@ -8,6 +8,7 @@ import com.cardpro.auth.dto.response.AuthResponse;
 import com.cardpro.auth.security.UserPrincipal;
 import com.cardpro.auth.service.AuthService;
 import com.cardpro.auth.service.JwtService;
+import com.cardpro.auth.service.SecurityEmailService;
 import com.cardpro.auth.service.TokenBlacklistService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,7 @@ public class AuthController {
     private final AuthService authService;
     private final JwtService jwtService;
     private final TokenBlacklistService tokenBlacklistService;
+    private final SecurityEmailService securityEmailService; // INJECTED NEW EMAIL SERVICE
 
     /**
      * Register a new user account.
@@ -63,7 +65,13 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         log.debug("Login request for email: {}", request.getEmail());
+
+        // 1. Authenticate the user and generate tokens
         AuthResponse response = authService.login(request);
+
+        // 2. Trigger the async login notification email (fails silently if SMTP is down)
+        securityEmailService.sendLoginAlertEmail(request.getEmail());
+
         return ResponseEntity.ok(response);
     }
 
@@ -98,9 +106,9 @@ public class AuthController {
             @Valid @RequestBody ChangePasswordRequest request) {
         if (authentication != null && authentication.getPrincipal() instanceof UserPrincipal principal) {
             authService.changePassword(
-                principal.getId(),
-                request.getCurrentPassword(),
-                request.getNewPassword()
+                    principal.getId(),
+                    request.getCurrentPassword(),
+                    request.getNewPassword()
             );
             log.info("Password changed for user: {}", principal.getEmail());
             return ResponseEntity.noContent().build();
