@@ -19,11 +19,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
- * Authentication controller exposing register, login, refresh, and logout endpoints.
+ * Authentication controller exposing register, login, refresh, logout, and health endpoints.
  *
  * <p><b>Security:</b>
  * <ul>
+ *   <li>{@code GET  /health} — PUBLIC (no auth required, for uptime monitoring)</li>
  *   <li>{@code POST /register} — PUBLIC (no auth required)</li>
  *   <li>{@code POST /login} — PUBLIC (no auth required)</li>
  *   <li>{@code POST /refresh} — PUBLIC (uses old refresh token, not JWT)</li>
@@ -41,7 +44,17 @@ public class AuthController {
     private final AuthService authService;
     private final JwtService jwtService;
     private final TokenBlacklistService tokenBlacklistService;
-    private final SecurityEmailService securityEmailService; // INJECTED NEW EMAIL SERVICE
+    private final SecurityEmailService securityEmailService;
+
+    /**
+     * Public health check endpoint for UptimeRobot and load balancer keep-alive pings.
+     *
+     * @return 200 OK with {"status": "UP"}
+     */
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> healthCheck() {
+        return ResponseEntity.ok(Map.of("status", "UP"));
+    }
 
     /**
      * Register a new user account.
@@ -69,7 +82,7 @@ public class AuthController {
         // 1. Authenticate the user and generate tokens
         AuthResponse response = authService.login(request);
 
-        // 2. Trigger the async login notification email (fails silently if SMTP is down)
+        // 2. Trigger the async login notification email (fails silently if SMTP is blocked)
         securityEmailService.sendLoginAlertEmail(request.getEmail());
 
         return ResponseEntity.ok(response);

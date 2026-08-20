@@ -13,6 +13,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -26,6 +27,23 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+    /**
+     * Completely bypasses Spring Security filters for health checks, actuators, and docs.
+     * Requests matching these patterns will never hit JwtAuthenticationFilter or InternalApiKeyFilter.
+     */
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        return (web) -> web.ignoring().requestMatchers(
+                "/api/v1/auth/health",
+                "/actuator/**",
+                "/error",
+                "/swagger-ui/**",
+                "/swagger-ui.html",
+                "/v3/api-docs/**",
+                "/v3/api-docs"
+        );
+    }
 
     @Bean
     public SecurityFilterChain filterChain(
@@ -44,7 +62,8 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authenticationEntryPoint())
                         .accessDeniedHandler(accessDeniedHandler()))
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Actuator Endpoints (Monitoring & Uptime)
+                        // 1. Dedicated Public Health & Actuator Endpoints
+                        .requestMatchers("/api/v1/auth/health").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
 
                         // 2. Swagger & OpenAPI docs
