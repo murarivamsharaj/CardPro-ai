@@ -48,7 +48,7 @@ public class UserServiceImpl implements UserService {
                 .email(request.getEmail())
                 .phoneNumber(request.getPhoneNumber())
                 .profileImage(request.getProfileImage())
-                .role(request.getRole()) // <-- FIXED: Added role mapping
+                .role(request.getRole())
                 .apiKey(UUID.randomUUID().toString())
                 .build();
 
@@ -93,7 +93,7 @@ public class UserServiceImpl implements UserService {
         user.setEmail(request.getEmail());
         user.setPhoneNumber(request.getPhoneNumber());
         user.setProfileImage(request.getProfileImage());
-        user.setRole(request.getRole()); // <-- FIXED: Added role update
+        user.setRole(request.getRole());
 
         user = userRepository.save(user);
         log.info("User updated successfully with id: {}", user.getId());
@@ -120,22 +120,11 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse getProfileByEmail(String email) {
-        // A valid JWT proves the caller exists in auth-service, but user-service
-        // records are created lazily. Returning 404 here was the "ghost profile"
-        // bug: the frontend could never read the Pro flag for accounts without a
-        // row, so the UI stayed on the free tier even after isPro was saved.
-        //
-        // The row (and pro=true) is now created on the very first read so that:
-        //   • the profile the Settings page sees is the one persisted in the DB;
-        //   • the developer API key is generated ONCE, saved, and returned — not
-        //     a fresh throwaway UUID per request for users without a row yet.
         User user = userRepository.findByEmail(email).orElse(null);
         if (user == null) {
             user = userRepository.save(newProfile(email));
             log.info("Created lazy profile on first read for {}", email);
         } else if (user.getApiKey() == null) {
-            // Backfill for profiles created before the developer-integrations
-            // feature shipped. At most one write per user.
             user.setApiKey(UUID.randomUUID().toString());
             user = userRepository.save(user);
             log.info("Backfilled API key for existing profile {}", email);
@@ -150,8 +139,6 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByEmail(email)
                 .orElseGet(() -> newProfile(email));
 
-        // Only overwrite fields the client actually sent, so a partial update
-        // never wipes previously saved values.
         if (request.getDisplayName() != null) {
             user.setDisplayName(request.getDisplayName());
         }
@@ -185,8 +172,6 @@ public class UserServiceImpl implements UserService {
         user.setEmailNotificationsEnabled(Boolean.TRUE.equals(request.getEnabled()));
         user = userRepository.save(user);
 
-        // Broadcast the preference so the lead-notification pipeline (and any
-        // other consumer) can honor it without hitting this database.
         notificationEventPublisher.publishNotificationPreferenceChanged(user);
 
         log.info("Email notification preference for {} set to {}", user.getEmail(), user.getEmailNotificationsEnabled());
@@ -220,9 +205,6 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public UserResponse deleteAccount(String email) {
-        // Soft delete: the row is kept (other services may still reference the
-        // account) but active=false bars the account from further use. Idempotent
-        // — deleting an already-deleted (or never-created) profile is a no-op.
         User user = userRepository.findByEmail(email)
                 .orElseGet(() -> newProfile(email));
 
@@ -242,11 +224,22 @@ public class UserServiceImpl implements UserService {
                 .orElse(false);
     }
 
+    @Override
+    @Transactional
+    public UserResponse upgradeToPro(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseGet(() -> newProfile(email));
+
+        user.setPro(true);
+        user = userRepository.save(user);
+
+        log.info("User {} upgraded to Pro successfully", email);
+        return mapToResponse(user);
+    }
+
     /**
      * Creates a minimal profile record keyed by the JWT email. Keeps the
-     * existing schema rules intact: {@code firstName}/{@code lastName} are NOT
-     * NULL, so they are derived from the display name (or the email) instead of
-     * being dropped.
+     * existing schema rules intact.
      */
     private User newProfile(String email) {
         String localPart = email.contains("@") ? email.substring(0, email.indexOf('@')) : email;
@@ -272,9 +265,6 @@ public class UserServiceImpl implements UserService {
 
     /**
      * Maps User entity to UserResponse DTO.
-     *
-     * @param user the entity to map
-     * @return the response DTO
      */
     private UserResponse mapToResponse(User user) {
         return UserResponse.builder()

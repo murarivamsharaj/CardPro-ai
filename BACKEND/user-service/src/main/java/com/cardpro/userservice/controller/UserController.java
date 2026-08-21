@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -52,5 +53,21 @@ public class UserController {
     public ResponseEntity<String> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
         return ResponseEntity.ok("User deleted successfully");
+    }
+
+    @PostMapping("/me/upgrade")
+    @Operation(summary = "Upgrade the authenticated user to Pro")
+    public ResponseEntity<UserResponse> upgradeToPro(
+            @RequestHeader(value = "X-User-Email", required = false) String headerEmail,
+            Principal principal) {
+
+        // Extract email from Gateway header OR Spring Security Principal
+        String email = headerEmail != null ? headerEmail : (principal != null ? principal.getName() : null);
+
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return ResponseEntity.ok(userService.upgradeToPro(email));
     }
 }
