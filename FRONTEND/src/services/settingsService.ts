@@ -3,7 +3,6 @@ import api from './api';
 import { analyticsService } from './analyticsService';
 import { USER_SERVICE_BASE_URL, STORAGE_KEYS } from '../utils/constants';
 
-
 const userApi = axios.create({
   baseURL: USER_SERVICE_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
@@ -123,8 +122,7 @@ export interface VerifyPaymentResponse {
 
 export const createProOrder = async (): Promise<CreateOrderResponse> => {
   const { data } = await api.post<CreateOrderResponse>('/api/v1/payments/create-order', {
-    itemType: 'PRO_SUBSCRIPTION',
-    amount: 999
+    amount: 999 // Removed itemType to prevent the 400 Bad Request enum error
   });
   return data;
 };
