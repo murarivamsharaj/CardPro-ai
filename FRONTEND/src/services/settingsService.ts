@@ -154,24 +154,36 @@ export interface VerifyPaymentResponse {
 
 /** Create a Razorpay order for the ₹999 CardPro Pro upgrade. */
 export const createProOrder = async (): Promise<CreateOrderResponse> => {
-  const { data } = await userApi.post<CreateOrderResponse>('/users/payments/create-order');
+  // Hit the payment-service to create the razorpay order
+  const { data } = await api.post<CreateOrderResponse>('/api/v1/payments/create-order', {
+    itemType: 'PRO_SUBSCRIPTION',
+    amount: 999
+  });
   return data;
 };
 
 /** Verify the Razorpay signature server-side; on success activates Pro. */
 export const verifyProPayment = async (payload: VerifyPaymentPayload): Promise<VerifyPaymentResponse> => {
   try {
-    const { data } = await userApi.post<VerifyPaymentResponse>('/users/payments/verify', payload);
-    localStorage.setItem('cardpro_is_pro', 'true');
-    return { ...data, pro: true };
-  } catch (err) {
-    console.warn('Server verify fallback triggered, unlocking Pro locally');
+    // 1. Verify the Razorpay cryptographic signature with the payment-service
+    await api.post('/api/v1/payments/verify', {
+      razorpayOrderId: payload.razorpayOrderId,
+      razorpayPaymentId: payload.razorpayPaymentId,
+      signature: payload.signature
+    });
+
+    // 2. Safely call the NEW endpoint we just added to user-service to grant Pro status
+    await userApi.post('/users/me/upgrade');
+
     localStorage.setItem('cardpro_is_pro', 'true');
     return {
       success: true,
-      message: 'Payment verified successfully',
+      message: 'Payment verified and account upgraded successfully',
       pro: true,
     };
+  } catch (err) {
+    console.error('Failed to verify payment or upgrade profile', err);
+    throw err;
   }
 };
 
