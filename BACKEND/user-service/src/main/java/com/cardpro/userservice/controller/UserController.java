@@ -9,7 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
+import java.util.Base64;
 import java.util.List;
 
 @RestController
@@ -59,10 +59,37 @@ public class UserController {
     @Operation(summary = "Upgrade the authenticated user to Pro")
     public ResponseEntity<UserResponse> upgradeToPro(
             @RequestHeader(value = "X-User-Email", required = false) String headerEmail,
-            Principal principal) {
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
 
-        // Extract email from Gateway header OR Spring Security Principal
-        String email = headerEmail != null ? headerEmail : (principal != null ? principal.getName() : null);
+        String email = headerEmail;
+
+        // Bulletproof fallback: manually extract email from the JWT token if the Gateway header is missing
+        if ((email == null || email.isBlank()) && authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                String token = authHeader.substring(7);
+                String[] chunks = token.split("\\.");
+                if (chunks.length >= 2) {
+                    String payload = new String(Base64.getUrlDecoder().decode(chunks[1]));
+                    String searchStr = "\"email\":\"";
+                    int startIndex = payload.indexOf(searchStr);
+                    if (startIndex != -1) {
+                        startIndex += searchStr.length();
+                        int endIndex = payload.indexOf("\"", startIndex);
+                        email = payload.substring(startIndex, endIndex);
+                    } else {
+                        searchStr = "\"sub\":\"";
+                        startIndex = payload.indexOf(searchStr);
+                        if (startIndex != -1) {
+                            startIndex += searchStr.length();
+                            int endIndex = payload.indexOf("\"", startIndex);
+                            email = payload.substring(startIndex, endIndex);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // Ignore parse errors and let it fall through to the 401 Unauthorized block
+            }
+        }
 
         if (email == null || email.isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
