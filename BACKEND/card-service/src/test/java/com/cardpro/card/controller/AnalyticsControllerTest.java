@@ -14,10 +14,10 @@ import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.nio.charset.StandardCharsets;
@@ -60,10 +60,10 @@ class AnalyticsControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockitoBean
+    @MockBean
     private AnalyticsService analyticsService;
 
-    @MockitoBean
+    @MockBean
     private CardService cardService;
 
     private String tokenFor(String userId, String role) {

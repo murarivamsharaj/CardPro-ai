@@ -104,7 +104,7 @@ export const fetchAnalytics = createAsyncThunk(
   'card/fetchAnalytics',
   async (_, { rejectWithValue }) => {
     try {
-      // Single source of truth for analytics payloads lives in analyticsService
+      // Single source of truth for analytics payloads lives in analyticsService page needed
       return await analyticsService.getUserAnalytics(30);
     } catch (error: any) {
       return rejectWithValue(getErrorMessage(error));
