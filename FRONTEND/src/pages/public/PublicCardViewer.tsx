@@ -28,7 +28,6 @@ export default function PublicCardViewer() {
 
   useEffect(() => {
     let cancelled = false;
-    setState({ status: 'loading' });
 
     fetchPublicCard(slug)
       .then((card) => {

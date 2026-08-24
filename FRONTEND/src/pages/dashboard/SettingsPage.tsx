@@ -155,11 +155,12 @@ export const SettingsPage: React.FC = () => {
       <div className="space-y-6">
         <AppearanceSection />
         <ProSection {...sectionProps} />
-        <ProfileSection {...sectionProps} />
+        {/* React Key prop ensures clean initialization of form states instead of double rendering with useEffect */}
+        <ProfileSection key={`profile-${profile?.id || 'loading'}`} {...sectionProps} />
         <PasswordSection />
         <NotificationsSection {...sectionProps} />
         <CardPreferencesSection {...sectionProps} />
-        <DeveloperIntegrationsSection {...sectionProps} />
+        <DeveloperIntegrationsSection key={`dev-${profile?.id || 'loading'}`} {...sectionProps} />
         <DangerZoneSection email={email} />
         {isAdmin && <AdminCommandCenter currentUserId={user?.id} />}
       </div>
@@ -288,23 +289,13 @@ function AppearanceSection() {
 
 function ProfileSection({ email, profile, profileLoading, onProfileChange }: ProfileAwareSectionProps) {
   const [saving, setSaving] = useState(false);
+  
+  // Directly initializing with prop data rather than using useEffect
   const [form, setForm] = useState({
-    displayName: '',
-    phoneNumber: '',
-    jobTitle: '',
+    displayName: profile?.displayName || '',
+    phoneNumber: profile?.phoneNumber || '',
+    jobTitle: profile?.jobTitle || '',
   });
-
-  // Prefill the form whenever the shared profile arrives or changes (the
-  // fetch itself lives in SettingsPage — one call, shared by every section).
-  useEffect(() => {
-    if (profile) {
-      setForm({
-        displayName: profile.displayName || '',
-        phoneNumber: profile.phoneNumber || '',
-        jobTitle: profile.jobTitle || '',
-      });
-    }
-  }, [profile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -644,15 +635,11 @@ function CardPreferencesSection({ profile, onProfileChange }: ProfileAwareSectio
  * persists a UUID for every profile on first read.
  */
 function DeveloperIntegrationsSection({ profile, onProfileChange }: ProfileAwareSectionProps) {
-  const [webhook, setWebhook] = useState('');
+  // Directly initializing with prop data rather than using useEffect
+  const [webhook, setWebhook] = useState(profile?.webhookUrl || '');
   const [regenerating, setRegenerating] = useState(false);
   const [savingWebhook, setSavingWebhook] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  // Keep the local input in sync when the shared profile arrives / changes.
-  useEffect(() => {
-    setWebhook(profile?.webhookUrl || '');
-  }, [profile?.webhookUrl]);
 
   const handleRegenerate = async () => {
     if (regenerating) return;
