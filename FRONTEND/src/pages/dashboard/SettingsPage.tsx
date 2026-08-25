@@ -102,9 +102,11 @@ export const SettingsPage: React.FC = () => {
     }
   }, [email, user?.pro, updateUser]);
 
+  // FIX 1: Run only once on mount to prevent infinite fetching loop
   useEffect(() => {
     refreshProfile();
-  }, [refreshProfile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * After any successful write, replace the shared profile AND merge the
@@ -912,13 +914,13 @@ function ProSection({ email, profile, onProfileChange }: ProfileAwareSectionProp
   // fetch answered first (or whether one failed).
   const isPro = user?.pro === true || profile?.pro === true;
 
-  // Heal drift: if the server knows the user is Pro but the cached auth user
-  // doesn't (e.g. stale localStorage), fix the cache so both sides agree.
+  // FIX 2: Removed updateUser from the dependency array to prevent looping
   useEffect(() => {
     if (isPro && user?.pro !== true) {
       updateUser({ pro: true });
     }
-  }, [isPro, user?.pro, updateUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPro, user?.pro]);
 
   const handleUpgrade = async () => {
     if (checkingOut) return;
