@@ -31,20 +31,6 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(createdUser);
     }
 
-    // 🔥 THE FIX: Explicit GET /me endpoint using the correct service method name
-    @GetMapping("/me")
-    @Operation(summary = "Get authenticated user profile")
-    public ResponseEntity<UserResponse> getMyProfile(HttpServletRequest request) {
-        String email = extractEmailFromRequest(request);
-
-        if (email == null || email.isBlank()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        // Changed from getUserByEmail to getProfileByEmail
-        return ResponseEntity.ok(userService.getProfileByEmail(email));
-    }
-
     @GetMapping("/{id}")
     @Operation(summary = "Get user profile by ID")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
