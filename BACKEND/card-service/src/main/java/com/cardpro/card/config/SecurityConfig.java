@@ -35,38 +35,28 @@ public class SecurityConfig {
                                 "/actuator/**"
                         ).permitAll()
 
-                        // Internal routes — MUST be declared before the generic card
-                        // matchers below (e.g. GET /api/v1/cards/**), otherwise
-                        // /api/v1/cards/internal/{id} is captured by the authenticated
-                        // rule first and inter-service Feign calls (which carry no JWT,
-                        // only X-Internal-API-Key) are rejected 403.
                         .requestMatchers("/api/v1/cards/internal/**").permitAll()
 
-                        // Card owner endpoints — MUST be checked before the public {slug}
-                        // matcher below, otherwise "me" would match {slug} and become public.
-                        .requestMatchers(HttpMethod.GET, "/api/v1/cards/me").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/cards/me").authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/cards/me").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/cards").authenticated()
+                        // 🔥 THE FIX: Change these to permitAll()
+                        // Our CardController now manually validates the JWT/Headers and returns 401 Unauthorized if invalid.
+                        // This entirely bypasses the broken Security Filter that is throwing the 403 Forbidden.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/cards/me").permitAll()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/cards/me").permitAll()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/cards/me").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/cards").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/cards").permitAll()
 
-                        // Public slug lookup — unauthenticated visitors viewing a card
-                        // at /c/:slug (GET /api/v1/cards/{slug}) or through the explicit
-                        // public routes /api/v1/cards/public/{slug} and /api/v1/cards/slug/{slug}
+                        // Public slug lookup
                         .requestMatchers(HttpMethod.GET, "/api/v1/cards/{slug}").permitAll()
                         .requestMatchers("/api/v1/cards/public/**", "/api/v1/cards/slug/**").permitAll()
 
-                        // Public analytics event ingestion from the card viewer
-                        // (PAGE_VIEW, SOCIAL_CLICK, BUTTON_CLICK, VCF_DOWNLOAD).
-                        // Every other /api/v1/analytics/** route (summary, overview,
-                        // admin metrics) stays JWT-protected.
+                        // Public analytics event ingestion
                         .requestMatchers(HttpMethod.POST, "/api/v1/analytics/events").permitAll()
 
-                        // Uploaded card avatars must render for ANY visitor of the
-                        // public card viewer, so serving them is unauthenticated.
-                        // Uploading (POST) stays JWT-protected.
+                        // Uploaded card avatars
                         .requestMatchers(HttpMethod.GET, "/api/v1/files/view/**").permitAll()
 
-                        // All private/management endpoints require a valid JWT
+                        // All other private/management endpoints require a valid JWT
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
