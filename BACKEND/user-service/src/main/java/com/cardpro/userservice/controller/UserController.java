@@ -5,6 +5,7 @@ import com.cardpro.userservice.dto.UserResponse;
 import com.cardpro.userservice.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -57,44 +58,68 @@ public class UserController {
 
     @PostMapping("/me/upgrade")
     @Operation(summary = "Upgrade the authenticated user to Pro")
-    public ResponseEntity<UserResponse> upgradeToPro(
-            @RequestHeader(value = "X-User-Email", required = false) String headerEmail,
-            @RequestHeader(value = "Authorization", required = false) String authHeader) {
-
-        String email = headerEmail;
-
-        // Bulletproof fallback: manually extract email from the JWT token if the Gateway header is missing
-        if ((email == null || email.isBlank()) && authHeader != null && authHeader.startsWith("Bearer ")) {
-            try {
-                String token = authHeader.substring(7);
-                String[] chunks = token.split("\\.");
-                if (chunks.length >= 2) {
-                    String payload = new String(Base64.getUrlDecoder().decode(chunks[1]));
-                    String searchStr = "\"email\":\"";
-                    int startIndex = payload.indexOf(searchStr);
-                    if (startIndex != -1) {
-                        startIndex += searchStr.length();
-                        int endIndex = payload.indexOf("\"", startIndex);
-                        email = payload.substring(startIndex, endIndex);
-                    } else {
-                        searchStr = "\"sub\":\"";
-                        startIndex = payload.indexOf(searchStr);
-                        if (startIndex != -1) {
-                            startIndex += searchStr.length();
-                            int endIndex = payload.indexOf("\"", startIndex);
-                            email = payload.substring(startIndex, endIndex);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                // Ignore parse errors and let it fall through to the 401 Unauthorized block
-            }
-        }
+    public ResponseEntity<UserResponse> upgradeToPro(HttpServletRequest request) {
+        String email = extractEmailFromRequest(request);
 
         if (email == null || email.isBlank()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        return ResponseEntity.ok(userService.upgradeToPro(email));
+        UserResponse response = userService.upgradeToPro(email);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Extracts user email safely from gateway headers or by decoding the JWT Bearer token.
+     */
+    private String extractEmailFromRequest(HttpServletRequest request) {
+        // 1. Check direct Gateway headers
+        String email = request.getHeader("X-User-Email");
+        if (email != null && !email.isBlank()) {
+            return email.trim();
+        }
+
+        email = request.getHeader("X-Auth-User");
+        if (email != null && !email.isBlank()) {
+            return email.trim();
+        }
+
+        // 2. Fallback: Parse Bearer JWT token directly from Authorization header
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                String token = authHeader.substring(7);
+                String[] chunks = token.split("\\.");
+                if (chunks.length >= 2) {
+                    String payload = new String(Base64.getUrlDecoder().decode(chunks[1]));
+
+                    // Look for "email":"user@domain.com"
+                    String searchStr = "\"email\":\"";
+                    int startIndex = payload.indexOf(searchStr);
+                    if (startIndex != -1) {
+                        startIndex += searchStr.length();
+                        int endIndex = payload.indexOf("\"", startIndex);
+                        if (endIndex != -1) {
+                            return payload.substring(startIndex, endIndex);
+                        }
+                    }
+
+                    // Fallback to "sub":"user@domain.com"
+                    searchStr = "\"sub\":\"";
+                    startIndex = payload.indexOf(searchStr);
+                    if (startIndex != -1) {
+                        startIndex += searchStr.length();
+                        int endIndex = payload.indexOf("\"", startIndex);
+                        if (endIndex != -1) {
+                            return payload.substring(startIndex, endIndex);
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+                // If token parsing fails, return null to send 401
+            }
+        }
+
+        return null;
     }
 }

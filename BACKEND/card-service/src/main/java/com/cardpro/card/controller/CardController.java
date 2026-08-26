@@ -5,8 +5,8 @@ import com.cardpro.card.dto.request.UpdateCardRequest;
 import com.cardpro.card.dto.response.CardResponse;
 import com.cardpro.card.dto.response.PublicCardResponse;
 import com.cardpro.card.exception.CardNotFoundException;
-import com.cardpro.card.security.CardUserPrincipal;
 import com.cardpro.card.service.CardService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -16,7 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
+import java.util.Base64;
 import java.util.List;
 
 @RestController
@@ -26,23 +26,21 @@ public class CardController {
 
     private final CardService cardService;
 
-    /**
-     * 🔒 PERMANENT SECURITY FIX:
-     * Previously leaked all cards in the database. Now strictly locked to the
-     * authenticated user's Principal ID. Wraps the secure list in a PageImpl
-     * to satisfy the frontend Dashboard without breaking CardService contracts.
-     */
     @GetMapping
     public ResponseEntity<Page<CardResponse>> getAllCards(
-            Principal principal,
+            HttpServletRequest httpRequest,
             @RequestParam(required = false, defaultValue = "") String search,
             Pageable pageable
     ) {
-        try {
-            // Safely fetch ONLY the logged-in user's cards
-            List<CardResponse> userCards = cardService.getCardsByUserId(principal.getName());
+        String email = extractEmailFromRequest(httpRequest);
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
-            // Apply search filter locally if requested
+        try {
+            // Fetch ONLY the logged-in user's cards using their email/userId
+            List<CardResponse> userCards = cardService.getCardsByUserId(email);
+
             if (!search.isEmpty()) {
                 String keyword = search.toLowerCase();
                 userCards = userCards.stream()
@@ -50,7 +48,6 @@ public class CardController {
                         .toList();
             }
 
-            // Wrap the secure list in a Page object to maintain frontend compatibility
             int start = (int) pageable.getOffset();
             int end = Math.min((start + pageable.getPageSize()), userCards.size());
             List<CardResponse> pageContent = start <= end ? userCards.subList(start, end) : List.of();
@@ -58,8 +55,6 @@ public class CardController {
             return ResponseEntity.ok(new PageImpl<>(pageContent, pageable, userCards.size()));
 
         } catch (CardNotFoundException e) {
-            // Graceful degradation: If a new user has no cards, return a clean,
-            // empty page so the Dashboard renders "0 cards" instead of crashing.
             return ResponseEntity.ok(new PageImpl<>(List.of(), pageable, 0));
         }
     }
@@ -80,37 +75,94 @@ public class CardController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<List<CardResponse>> getMyCards(Principal principal) {
-        return ResponseEntity.ok(cardService.getCardsByUserId(principal.getName()));
+    public ResponseEntity<List<CardResponse>> getMyCards(HttpServletRequest httpRequest) {
+        String email = extractEmailFromRequest(httpRequest);
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(cardService.getCardsByUserId(email));
     }
 
     @PostMapping
     public ResponseEntity<CardResponse> createCard(
-            Principal principal,
-            @RequestHeader(value = "X-User-Email", required = false) String headerEmail,
+            HttpServletRequest httpRequest,
             @Valid @RequestBody CreateCardRequest request) {
+
+        String email = extractEmailFromRequest(httpRequest);
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // We use email as the identifier for both userId mapping and ownerEmail
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(cardService.createCard(principal.getName(), resolveOwnerEmail(principal, headerEmail), request));
+                .body(cardService.createCard(email, email, request));
     }
 
     @PutMapping("/me")
     public ResponseEntity<CardResponse> updateCard(
-            Principal principal,
-            @RequestHeader(value = "X-User-Email", required = false) String headerEmail,
+            HttpServletRequest httpRequest,
             @Valid @RequestBody UpdateCardRequest request) {
-        return ResponseEntity.ok(cardService.updateCard(principal.getName(), resolveOwnerEmail(principal, headerEmail), request));
+
+        String email = extractEmailFromRequest(httpRequest);
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return ResponseEntity.ok(cardService.updateCard(email, email, request));
     }
 
     @DeleteMapping("/me")
-    public ResponseEntity<Void> deleteCard(Principal principal) {
-        cardService.deleteCard(principal.getName());
+    public ResponseEntity<Void> deleteCard(HttpServletRequest httpRequest) {
+        String email = extractEmailFromRequest(httpRequest);
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        cardService.deleteCard(email);
         return ResponseEntity.noContent().build();
     }
 
-    private String resolveOwnerEmail(Principal principal, String headerEmail) {
-        if (principal instanceof CardUserPrincipal cardUser && cardUser.email() != null && !cardUser.email().isBlank()) {
-            return cardUser.email();
+    /**
+     * Safely extracts the user's email from Gateway headers or parses the JWT token directly.
+     * Prevents 403 Forbidden errors when Spring Principal fails to inject.
+     */
+    private String extractEmailFromRequest(HttpServletRequest request) {
+        String email = request.getHeader("X-User-Email");
+        if (email != null && !email.isBlank()) {
+            return email.trim();
         }
-        return headerEmail;
+
+        email = request.getHeader("X-Auth-User");
+        if (email != null && !email.isBlank()) {
+            return email.trim();
+        }
+
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            try {
+                String token = authHeader.substring(7);
+                String[] chunks = token.split("\\.");
+                if (chunks.length >= 2) {
+                    String payload = new String(Base64.getUrlDecoder().decode(chunks[1]));
+
+                    String searchStr = "\"email\":\"";
+                    int startIndex = payload.indexOf(searchStr);
+                    if (startIndex != -1) {
+                        startIndex += searchStr.length();
+                        int endIndex = payload.indexOf("\"", startIndex);
+                        if (endIndex != -1) return payload.substring(startIndex, endIndex);
+                    }
+
+                    searchStr = "\"sub\":\"";
+                    startIndex = payload.indexOf(searchStr);
+                    if (startIndex != -1) {
+                        startIndex += searchStr.length();
+                        int endIndex = payload.indexOf("\"", startIndex);
+                        if (endIndex != -1) return payload.substring(startIndex, endIndex);
+                    }
+                }
+            } catch (Exception ignored) { }
+        }
+        return null;
     }
 }

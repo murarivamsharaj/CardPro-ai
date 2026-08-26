@@ -67,22 +67,24 @@ public class CardService {
     }
 
     /**
-     * Returns a list of cards belonging to the user using findAllByUserId,
-     * preventing the NonUniqueResultException crash when a user owns multiple cards.
+     * Returns a list of cards belonging to the user using the ownerEmail.
+     * Prevents UUID parsing exceptions from the new Controller logic.
      */
-    public List<CardResponse> getCardsByUserId(String userId) {
-        List<CardProfile> profiles = cardProfileRepository.findAllByUserId(UUID.fromString(userId));
+    public List<CardResponse> getCardsByUserId(String ownerEmail) {
+        List<CardProfile> profiles = cardProfileRepository.findAllByOwnerEmail(ownerEmail);
         if (profiles.isEmpty()) {
             throw new CardNotFoundException();
         }
         return profiles.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
-    // Maintained for backwards compatibility using Optional findByUserId
-    public CardResponse getCardByUserId(String userId) {
-        CardProfile profile = cardProfileRepository.findFirstByUserId(UUID.fromString(userId))
-                .orElseThrow(CardNotFoundException::new);
-        return mapToResponse(profile);
+    // Maintained for backwards compatibility
+    public CardResponse getCardByUserId(String ownerEmail) {
+        List<CardProfile> profiles = cardProfileRepository.findAllByOwnerEmail(ownerEmail);
+        if (profiles.isEmpty()) {
+            throw new CardNotFoundException();
+        }
+        return mapToResponse(profiles.get(0));
     }
 
     public CardResponse getCardById(UUID profileId) {
@@ -101,11 +103,12 @@ public class CardService {
                 .map(this::mapToResponse);
     }
 
-    public CardResponse createCard(String userId, String ownerEmail, CreateCardRequest request) {
+    public CardResponse createCard(String userIdStr, String ownerEmail, CreateCardRequest request) {
         slugService.validateSlug(request.getSlug());
 
         CardProfile profile = CardProfile.builder()
-                .userId(UUID.fromString(userId))
+                // Generates a deterministic UUID from the email so the database schema doesn't break
+                .userId(UUID.nameUUIDFromBytes(ownerEmail.getBytes()))
                 .ownerEmail(ownerEmail)
                 .slug(request.getSlug())
                 .templateId(request.getTemplateId() != null ? request.getTemplateId() : "basic")
@@ -119,9 +122,9 @@ public class CardService {
         return mapToResponse(profile);
     }
 
-    public CardResponse updateCard(String userId, String ownerEmail, UpdateCardRequest request) {
-        // Fetch user's cards safely using findAllByUserId
-        List<CardProfile> profiles = cardProfileRepository.findAllByUserId(UUID.fromString(userId));
+    public CardResponse updateCard(String userIdStr, String ownerEmail, UpdateCardRequest request) {
+        // Fetch user's cards safely using ownerEmail
+        List<CardProfile> profiles = cardProfileRepository.findAllByOwnerEmail(ownerEmail);
         if (profiles.isEmpty()) {
             throw new CardNotFoundException();
         }
@@ -149,17 +152,14 @@ public class CardService {
         if (request.getIsActive() != null) {
             profile.setIsActive(request.getIsActive());
         }
-        if (ownerEmail != null && !ownerEmail.isBlank()) {
-            profile.setOwnerEmail(ownerEmail);
-        }
 
         profile = cardProfileRepository.save(profile);
         cardCacheService.evictCache(profile.getSlug());
         return mapToResponse(profile);
     }
 
-    public void deleteCard(String userId) {
-        List<CardProfile> profiles = cardProfileRepository.findAllByUserId(UUID.fromString(userId));
+    public void deleteCard(String ownerEmail) {
+        List<CardProfile> profiles = cardProfileRepository.findAllByOwnerEmail(ownerEmail);
         if (profiles.isEmpty()) {
             throw new CardNotFoundException();
         }

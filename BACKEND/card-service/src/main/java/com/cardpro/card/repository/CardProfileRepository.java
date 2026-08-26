@@ -20,6 +20,9 @@ public interface CardProfileRepository extends JpaRepository<CardProfile, UUID> 
     // Multiple cards by user ID (used by AnalyticsService)
     List<CardProfile> findAllByUserId(UUID userId);
 
+    // NEW: Find cards by the owner's email (Required for the new JWT extraction flow)
+    List<CardProfile> findAllByOwnerEmail(String ownerEmail);
+
     // Lookup by public slug
     Optional<CardProfile> findBySlug(String slug);
 
