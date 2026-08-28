@@ -4,12 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { createCard, fetchMyCards } from '../../store/slices/cardSlice';
 import { ImageUpload } from '../../components/common/ImageUpload';
 import { resolveAvatarUrl } from '../../services/fileService';
-import { TiltCard } from '../../components/common/TiltCard';
 import { notifySuccess, notifyError } from '../../store/useNotificationStore';
 import { extractPrimaryColor, buildCardGradient, DEFAULT_CARD_GRADIENT, isLightColor } from '../../utils/colorUtils';
 import { generateCardDetails } from '../../services/aiService';
 import { TemplateGallery } from '../../components/common/TemplateGallery';
 import { templateGradient } from '../../utils/templateConstants';
+import DigitalCard from '../../components/dashboard/DigitalCard.tsx';// NEW COMPONENT IMPORTED
 
 interface FormState {
   slug: string;
@@ -53,7 +53,6 @@ const INITIAL_FORM: FormState = {
   },
 };
 
-/** Social platforms editable in the form (key → label + placeholder). */
 const SOCIAL_FIELDS: { key: string; label: string; placeholder: string }[] = [
   { key: 'linkedin', label: 'LinkedIn', placeholder: 'https://linkedin.com/in/username' },
   { key: 'github', label: 'GitHub', placeholder: 'https://github.com/username' },
@@ -73,13 +72,10 @@ const FIELD_LABELS: Record<string, string> = {
   email: 'Email',
 };
 
-
 export const CreateCardPage: React.FC = () => {
   const dispatch = useDispatch<any>();
   const navigate = useNavigate();
   const { loading, error } = useSelector((state: any) => state.card);
-  // The user's own card carries the purchased-entitlement flags (one card per
-  // user is normalized into an array by fetchMyCards).
   const currentCard = useSelector((state: any) => state.card.cards?.[0] || null);
   const premiumTemplatesUnlocked = !!currentCard?.premiumTemplatesUnlocked;
 
@@ -123,7 +119,6 @@ export const CreateCardPage: React.FC = () => {
 
   const avatarUrl = formData.profileData.avatarUrl;
 
-  /** Calls the ai-service and drops the suggestions into the editable fields. */
   const handleMagicAutofill = async () => {
     if (!aiPrompt.trim()) {
       notifyError('Add keywords first', 'Describe your role or industry so the AI has something to work with.');
@@ -155,13 +150,11 @@ export const CreateCardPage: React.FC = () => {
     }
   };
 
-  // Smart Color Coordination: derive the card gradient from the uploaded logo/avatar.
   useEffect(() => {
     let cancelled = false;
     const apply = async () => {
       if (!avatarUrl) {
         if (!cancelled) {
-          // No avatar → the selected template's own gradient styles the preview.
           setGradient(templateGradient(formData.templateId));
           setLightText(false);
         }
@@ -190,17 +183,6 @@ export const CreateCardPage: React.FC = () => {
     }
   };
 
-  const preview = useMemo(
-    () => ({
-      name: formData.profileData.fullName || 'Your Name',
-      title: formData.profileData.title || 'Professional Title',
-      email: formData.profileData.email,
-      phone: formData.profileData.phone,
-      slug: formData.slug || 'your-slug',
-    }),
-    [formData]
-  );
-
   return (
     <div className="mx-auto max-w-7xl p-6 lg:p-8">
       <div className="mb-8">
@@ -215,7 +197,6 @@ export const CreateCardPage: React.FC = () => {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
         {/* Form */}
         <form onSubmit={handleSubmit} className="glass-panel space-y-6 p-6 lg:col-span-3 lg:p-8">
-          {/* ✨ Magic Autofill — AI-drafted title, tagline, and bio */}
           <div className="rounded-2xl border border-fuchsia-400/25 bg-gradient-to-br from-violet-600/10 to-fuchsia-600/10 p-5">
             <div className="mb-3 flex items-center gap-2.5">
               <span className="text-xl">✨</span>
@@ -273,7 +254,6 @@ export const CreateCardPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Card template picker — premium designs gate behind the Store purchase */}
           <div>
             <p className="mb-1.5 block text-sm font-medium text-white/70">Card Template</p>
             <TemplateGallery
@@ -384,54 +364,24 @@ export const CreateCardPage: React.FC = () => {
           </button>
         </form>
 
-        {/* Live preview */}
+        {/* NEW LIVE PREVIEW SECTION */}
         <div className="lg:col-span-2">
           <div className="sticky top-24">
             <p className="mb-3 text-sm font-medium text-white/60">Live Preview</p>
-            <TiltCard className="h-full">
-              <div
-                className="relative flex h-[17rem] flex-col justify-between overflow-hidden rounded-2xl p-6"
-                style={{ background: gradient }}
-              >
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.28),transparent_55%)]" />
-                <div className="tilt-card-inner relative">
-                  <div className="flex items-center gap-3">
-                    {avatarUrl ? (
-                      <img src={resolveAvatarUrl(avatarUrl)} alt="Avatar" className="h-12 w-12 rounded-xl border border-white/40 object-cover shadow-lg" />
-                    ) : (
-                      <div className={`flex h-12 w-12 items-center justify-center rounded-xl border border-white/40 text-xl font-bold ${lightText ? 'text-black/60' : 'text-white/80'}`}>
-                        {preview.name.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div>
-                      <p className={`text-lg font-bold leading-tight ${lightText ? 'text-black/70' : 'text-white'}`}>{preview.name}</p>
-                      <p className={`text-sm ${lightText ? 'text-black/50' : 'text-white/70'}`}>{preview.title}</p>
-                    </div>
-                  </div>
-                </div>
+            
+            <DigitalCard 
+                card={{
+                    id: formData.slug || 'preview', 
+                    firstName: formData.profileData.fullName.split(' ')[0] || 'Your', 
+                    lastName: formData.profileData.fullName.split(' ').slice(1).join(' ') || 'Name',
+                    jobTitle: formData.profileData.title || 'Professional Title',
+                    phoneNumber: formData.profileData.phone || '+1 555 010 2030',
+                    email: formData.profileData.email || 'email@example.com'
+                }} 
+            />
 
-                <div className="tilt-card-inner relative">
-                  <div className={`h-7 w-9 rounded-md ${lightText ? 'bg-black/25' : 'bg-white/30'} backdrop-blur-sm`}>
-                    <div className="mx-auto mt-2 h-2.5 w-5 rounded-sm bg-gradient-to-br from-yellow-200/90 to-yellow-400/70" />
-                  </div>
-                </div>
-
-                <div className="tilt-card-inner relative space-y-1.5">
-                  {(preview.email || preview.phone) && (
-                    <div className={`space-y-1 text-sm ${lightText ? 'text-black/60' : 'text-white/80'}`}>
-                      {preview.email && <p className="truncate">{preview.email}</p>}
-                      {preview.phone && <p className="truncate">{preview.phone}</p>}
-                    </div>
-                  )}
-                  <p className={`text-[11px] font-medium ${lightText ? 'text-black/45' : 'text-white/55'}`}>
-                    cardpro.ai/c/{preview.slug}
-                  </p>
-                </div>
-              </div>
-            </TiltCard>
-
-            <p className="mt-4 text-xs leading-relaxed text-white/40">
-              Hover the preview to inspect the card's physical tilt. The gradient is derived from your uploaded logo's dominant color.
+            <p className="mt-4 text-xs leading-relaxed text-white/40 text-center">
+              Click the card to view your generated QR code and vCard download options.
             </p>
           </div>
         </div>
