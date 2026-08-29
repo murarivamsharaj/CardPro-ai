@@ -13,9 +13,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -26,6 +30,7 @@ public class LeadService {
     private final LeadEventPublisher leadEventPublisher;
     private final EmailNotificationService emailNotificationService;
     private final CardServiceClient cardServiceClient;
+    private final RestTemplate restTemplate = new RestTemplate(); // Added for Webhooks
 
     @Value("${app.internal.api-key}")
     private String internalApiKey;
@@ -47,13 +52,39 @@ public class LeadService {
         // Publish async event for AI follow-up generation
         leadEventPublisher.publishLeadCreated(lead);
 
+        // 🚀 NEW: Trigger Webhook asynchronously
+        triggerWebhook(lead);
+
         return mapToResponse(lead);
+    }
+
+    private void triggerWebhook(Lead lead) {
+        CompletableFuture.runAsync(() -> {
+            // TODO: Fetch this dynamically from the user's Card settings in the future.
+            // For testing, paste a Discord or Slack Webhook URL here:
+            String webhookUrl = "";
+
+            if (webhookUrl == null || webhookUrl.trim().isEmpty()) {
+                return;
+            }
+
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("content", "🚀 **New Lead from CardPro AI**\n" +
+                    "**Name:** " + lead.getVisitorName() + "\n" +
+                    "**Email:** " + lead.getVisitorEmail() + "\n" +
+                    "**Message:** " + lead.getMessage());
+
+            try {
+                restTemplate.postForEntity(webhookUrl, payload, String.class);
+            } catch (Exception e) {
+                log.error("Failed to trigger webhook for lead {}: {}", lead.getId(), e.getMessage());
+            }
+        });
     }
 
     public Page<LeadResponse> getLeadsByUserId(String userId, int page, int size, String search) {
         PageRequest pageRequest = PageRequest.of(page, size);
 
-        // Guard clause: if userId is null/blank, return empty page immediately
         if (userId == null || userId.isBlank()) {
             log.warn("Leads: getLeadsByUserId called with null or blank userId");
             return Page.empty(pageRequest);
@@ -97,10 +128,6 @@ public class LeadService {
         // Integrate with auth-service for credit deduction
     }
 
-    /**
-     * Number of leads captured against a single card profile. Used by
-     * card-service's analytics aggregation (via GET /internal/count).
-     */
     public long countLeadsForProfile(UUID profileId) {
         return leadRepository.countByProfileId(profileId);
     }

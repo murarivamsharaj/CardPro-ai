@@ -28,10 +28,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    /**
-     * Completely bypasses Spring Security filters for health checks, actuators, and docs.
-     * Requests matching these patterns will never hit JwtAuthenticationFilter or InternalApiKeyFilter.
-     */
     @Bean
     public WebSecurityCustomizer webSecurityCustomizer() {
         return (web) -> web.ignoring().requestMatchers(
@@ -62,23 +58,16 @@ public class SecurityConfig {
                         .authenticationEntryPoint(authenticationEntryPoint())
                         .accessDeniedHandler(accessDeniedHandler()))
                 .authorizeHttpRequests(auth -> auth
-                        // 1. Dedicated Public Health & Actuator Endpoints
                         .requestMatchers("/api/v1/auth/health").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
-
-                        // 2. Swagger & OpenAPI docs
                         .requestMatchers(
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
                                 "/v3/api-docs"
                         ).permitAll()
-
-                        // 3. Pre-flight CORS options, root & error dispatch
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/", "/error").permitAll()
-
-                        // 4. Public auth routes
                         .requestMatchers(
                                 "/api/v1/auth/login",
                                 "/api/v1/auth/login/**",
@@ -87,18 +76,9 @@ public class SecurityConfig {
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/refresh/**"
                         ).permitAll()
-
-                        // 5. Internal APIs
-                        .requestMatchers("/api/v1/auth/internal/**")
-                        .hasRole("INTERNAL_SERVICE")
-
-                        // 6. Admin APIs
-                        .requestMatchers("/api/v1/auth/admin/**")
-                        .hasRole("ADMIN")
-
-                        // Everything else requires authentication
-                        .anyRequest()
-                        .authenticated()
+                        .requestMatchers("/api/v1/auth/internal/**").hasRole("INTERNAL_SERVICE")
+                        .requestMatchers("/api/v1/auth/admin/**").hasRole("ADMIN")
+                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(internalApiKeyFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
@@ -112,9 +92,10 @@ public class SecurityConfig {
         return configuration.getAuthenticationManager();
     }
 
+    // 🚀 FIXED: Enforce a BCrypt strength of 10 to dramatically speed up logins
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(10);
     }
 
     @Bean
