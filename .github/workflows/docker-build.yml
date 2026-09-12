@@ -28,7 +28,7 @@ jobs:
           mvn clean package -DskipTests
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # 👇 THIS IS THE NEW STEP ADDED TO FIX THE BUILD ERROR
       - name: Create dummy .env file for CI
