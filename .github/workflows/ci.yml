@@ -13,7 +13,7 @@ jobs:
       matrix:
         service: [discovery-service, gateway-service, auth-service, card-service, lead-service, ai-service, payment-service]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -32,7 +32,7 @@ jobs:
   build-frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:

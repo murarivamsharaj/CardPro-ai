@@ -8,7 +8,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build all services
         run: |
           for service in discovery-service gateway-service auth-service card-service lead-service ai-service payment-service; do
